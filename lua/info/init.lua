@@ -40,7 +40,7 @@ local function find_info_window()
     end
 
     local win = 1
-    while win <= fn.winnr('$') do
+    while win <= fn.winnr '$' do
         local buf = fn.winbufnr(win)
         if vim.bo[buf].filetype == 'info' then
             vim.cmd(win .. 'wincmd w')
@@ -112,7 +112,7 @@ function M._read(ref)
 
     local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
     if res.code ~= 0 then
-        local message = res.stderr and res.stderr:match(':%s*([^:]+)$') or ''
+        local message = res.stderr and res.stderr:match ':%s*([^:]+)$' or ''
         return ('no manual found for "%s": %s'):format(ref, trim(message))
     end
 

@@ -20,5 +20,5 @@ autocmd('BufReadCmd', {
         end
 
         -- TODO: set buffer local commands / keymaps
-    end
+    end,
 })
