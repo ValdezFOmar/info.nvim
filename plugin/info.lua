@@ -1,3 +1,8 @@
+if vim.g.loaded_info ~= nil then
+    return
+end
+vim.g.loaded_info = true
+
 local autocmd = vim.api.nvim_create_autocmd
 local augroup = vim.api.nvim_create_augroup
 local command = vim.api.nvim_create_user_command
@@ -18,7 +23,5 @@ autocmd('BufReadCmd', {
             vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
             return
         end
-
-        -- TODO: set buffer local commands / keymaps
     end,
 })
