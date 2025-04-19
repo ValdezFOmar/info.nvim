@@ -13,10 +13,9 @@ local M = {}
 local function to_info_uri(manual, node)
     local encode = vim.uri_encode
     if not node or node == manual then
-        return 'info://' .. encode(manual)
-    else
-        return 'info://' .. encode(manual) .. '#' .. encode(node)
+        node = 'Top'
     end
+    return 'info://' .. encode(manual) .. '#' .. encode(node)
 end
 
 ---@param uri string
