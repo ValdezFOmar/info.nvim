@@ -5,3 +5,5 @@ vim.bo.tabstop = 8
 
 local win = vim.api.nvim_get_current_win()
 vim.wo[win][0].spell = false
+vim.wo[win][0].number = false
+vim.wo[win][0].relativenumber = false
