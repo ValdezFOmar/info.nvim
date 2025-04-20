@@ -23,6 +23,19 @@ Read [`Info`][info] manuals inside Neovim.
     - [ ] Headings
     - [ ] Menu entries
 
+### Reconsider the structure of `info` URLs
+
+```
+info://file.info/node?line=15&column=10
+```
+
+Where:
+- `file.info` is name of the file/manual (keep `.info` suffix?)
+- `/node` is the specific node visited (if the node is omitted the
+  default to `Top`)
+- Supported query parameters are `line` and `column` for jumping to a
+  specific part of the given URI
+
 ## References
 
 - [GNU Info reader][info]
