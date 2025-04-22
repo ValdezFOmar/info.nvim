@@ -28,18 +28,24 @@
 
 -- Final elements stored in `vim.b._info_manual` after processing the captures
 
+---Position of a single character in a buffer.
+---Uses (1, 0) indexing for `line` and `col` respectively.
 ---@class info.CharPosition
----@field line integer
----@field col integer
+---@field line integer 1-indexed
+---@field col integer 0-indexed
 
----@class info.EditorPosition
+---Position of a piece of text in a buffer.
+---The format of `start` and `end_` make it seamless to test if the cursor
+---is contained withing the text using the returned value of `nvim_win_get_cursor()`.
+---The range is end-inclusive to make is easier to use in Lua and with the extmarks API.
+---@class info.TextRange
 ---@field start info.CharPosition
 ---@field end_ info.CharPosition
 
----@class info.Document.Relation : info.EditorPosition
+---@class info.Document.Relation : info.TextRange
 ---@field target { file: string, node: string }
 
----@class info.Document.XRef : info.EditorPosition
+---@class info.Document.XRef : info.TextRange
 ---@field label string
 ---@field target { file: string, node: string }
 
@@ -154,35 +160,83 @@ local manual_pattern = (function()
     return Ct(Cgt('header', node_header) * Cgt('references', line ^ 0) * -1)
 end)()
 
--- local lines_pattern = Ct(Ct(START * (P(1) - '\n') ^ 0 * END * '\n') ^ 0)
+local lines_pattern = Ct(
+    Ct(START * (P(1) - '\n') ^ 0 * END * '\n') ^ 0
+    * -1
+    * Ct(START * END) -- additional empty line for simplifying line/column calculations
+)
+
+---@param text string
+---@return string
+local function fold_spaces(text)
+    text = text:gsub('%s+', ' ')
+    return text
+end
 
 ---@param ref string
 ---@return string? file
 ---@return string? node
-function M.parse_reference(ref)
+local function parse_reference(ref)
     ---@type string?, integer?
-    local file, len = ref:match '^%(([^)]+)%)()'
+    local file, len = ref:match '^%(([^)]+)()%)'
     local node = nil ---@type string?
     if not len then
         node = ref
-    elseif len - 1 ~= #ref then
-        node = ref:sub(len)
+    elseif len ~= #ref then
+        node = ref:sub(len + 1)
     end
+    assert(file or node, 'at least one of `file` or `node` should be defined')
     return file, node
 end
 
 ---@param rel info.parser.Header.Pair
----@param file string
+---@param this_file string
 ---@return info.Document.Relation
-local function build_relation(rel, file)
-    local xfile, node = M.parse_reference(rel.value.text)
+local function build_relation(rel, this_file)
+    local file, node = parse_reference(rel.value.text)
     return {
-        start = { line = 1, col = rel.start },
-        end_ = { line = 1, col = rel.end_ },
+        start = { line = 1, col = rel.start - 1 },
+        end_ = { line = 1, col = rel.end_ - 2 },  -- Extra `-1` to make end-inclusive
         target = {
-            file = xfile or file,
+            file = file or this_file,
             node = node or 'Top',
-        }
+        },
+    }
+end
+
+---@class info.build_xref.Positions
+---@field start_index integer
+---@field start_line integer
+---@field end_index integer
+---@field end_line integer
+
+---@param ref info.parser.Reference
+---@param this_file string
+---@param pos info.build_xref.Positions
+---@return info.Document.XRef
+local function build_xref(ref, this_file, pos)
+    local label = fold_spaces(ref.label.text)
+    local file, node ---@type string?, string?
+    if ref.target then
+        file, node = parse_reference(fold_spaces(ref.target.text))
+    else
+        file, node = this_file, label
+    end
+    ---@type info.Document.XRef
+    return {
+        start = {
+            col = ref.start - pos.start_index - 1,
+            line = pos.start_line,
+        },
+        end_ = {
+            col = ref.end_ - pos.end_index - 1,
+            line = pos.end_line,
+        },
+        label = label,
+        target = {
+            file = file or this_file,
+            node = node or 'Top',
+        },
     }
 end
 
@@ -197,22 +251,43 @@ function M.parse(text)
     end
 
     local file = caps.header.file.value.text
+    local xreferences = {} ---@type info.Document.XRef[]
+    local menu_entries = {} ---@type info.Document.XRef[]
+
+    local lines = vim.iter(ipairs(lines_pattern:match(text)))
+
+    local line ---@type integer
+    local pos ---@type info.parser.Position
+    local next_line ---@type integer
+    local next_pos ---@type info.parser.Position
+
+    line, pos = lines:next() --[[@as ...]]
+    next_line, next_pos = lines:next() --[[@as ...]]
+
+    for _, ref in ipairs(caps.references) do
+        while not (ref.start >= pos.start and ref.start < pos.end_) do
+            line, pos = next_line, next_pos
+            next_line, next_pos = lines:next() --[[@as ...]]
+            assert(next_line and next_pos, "there's always an extra line") --- see `lines_pattern`
+        end
+
+        local xref = build_xref(ref, file, {
+            start_line = line,
+            start_index = pos.start,
+            end_line = ref.end_ < pos.end_ and line or next_line,
+            end_index = ref.end_ < pos.end_ and pos.start or next_pos.start,
+        })
+        if ref.type == ElementType.MenuEntry then
+            table.insert(menu_entries, xref)
+        elseif ref.type == ElementType.XReference then
+            table.insert(xreferences, xref)
+        end
+    end
+
     local node = caps.header.node.value.text
     local next = caps.header.next
     local prev = caps.header.prev
     local up = caps.header.up
-
-    local xreferences = {} ---@type info.Document.XRef[]
-    local menu_entries = {} ---@type info.Document.XRef[]
-
-    -- TODO: Normalize references
-    for _, reference in ipairs(caps.references) do
-        if reference.type == ElementType.MenuEntry then
-            table.insert(menu_entries, reference)
-        elseif reference.type == ElementType.XReference then
-            table.insert(xreferences, reference)
-        end
-    end
 
     ---@type info.Document
     return {
