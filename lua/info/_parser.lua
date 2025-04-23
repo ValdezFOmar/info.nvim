@@ -142,6 +142,7 @@ local manual_pattern = (function()
         * B '\n' -- menu entries only appear at the start of lines
         * START
         * '* '
+        * - #P 'Menu:' -- this is not an entry, but the header for the input
         * reference
         * END
         * SWALLOW_LINE -- entry description / comment
@@ -196,7 +197,7 @@ local function build_relation(rel, this_file)
     local file, node = parse_reference(rel.value.text)
     return {
         start = { line = 1, col = rel.start - 1 },
-        end_ = { line = 1, col = rel.end_ - 2 },  -- Extra `-1` to make end-inclusive
+        end_ = { line = 1, col = rel.end_ - 2 }, -- Extra `-1` to make end-inclusive
         target = {
             file = file or this_file,
             node = node or 'Top',
@@ -225,11 +226,11 @@ local function build_xref(ref, this_file, pos)
     ---@type info.Document.XRef
     return {
         start = {
-            col = ref.start - pos.start_index - 1,
+            col = ref.start - pos.start_index,
             line = pos.start_line,
         },
         end_ = {
-            col = ref.end_ - pos.end_index - 1,
+            col = ref.end_ - pos.end_index - 1, -- Extra `-1` to make end-inclusive
             line = pos.end_line,
         },
         label = label,
@@ -265,7 +266,7 @@ function M.parse(text)
     next_line, next_pos = lines:next() --[[@as ...]]
 
     for _, ref in ipairs(caps.references) do
-        while not (ref.start >= pos.start and ref.start < pos.end_) do
+        while not (ref.start >= pos.start and ref.start <= pos.end_) do
             line, pos = next_line, next_pos
             next_line, next_pos = lines:next() --[[@as ...]]
             assert(next_line and next_pos, "there's always an extra line") --- see `lines_pattern`
@@ -274,8 +275,8 @@ function M.parse(text)
         local xref = build_xref(ref, file, {
             start_line = line,
             start_index = pos.start,
-            end_line = ref.end_ < pos.end_ and line or next_line,
-            end_index = ref.end_ < pos.end_ and pos.start or next_pos.start,
+            end_line = ref.end_ <= pos.end_ and line or next_line,
+            end_index = ref.end_ <= pos.end_ and pos.start or next_pos.start,
         })
         if ref.type == ElementType.MenuEntry then
             table.insert(menu_entries, xref)
