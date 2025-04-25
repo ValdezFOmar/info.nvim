@@ -8,7 +8,7 @@ local augroup = vim.api.nvim_create_augroup
 local command = vim.api.nvim_create_user_command
 
 command('Info', function(params)
-    local err = require('info').open(params.fargs, params.smods)
+    local err = require('_info').open(params.fargs, params.smods)
     if err then
         vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
     end
@@ -18,7 +18,7 @@ autocmd('BufReadCmd', {
     group = augroup('info.nvim', {}),
     pattern = 'info://*',
     callback = function(ev)
-        local err = require('info')._read(assert(ev.match:match 'info://(.+)'))
+        local err = require('_info')._read(ev.buf, assert(ev.match:match '^info://(.+)$'))
         if err then
             vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
             return

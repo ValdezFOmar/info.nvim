@@ -142,7 +142,7 @@ local manual_pattern = (function()
         * B '\n' -- menu entries only appear at the start of lines
         * START
         * '* '
-        * - #P 'Menu:' -- this is not an entry, but the header for the input
+        * -#P 'Menu:' -- this is not an entry, but the header for the input
         * reference
         * END
         * SWALLOW_LINE -- entry description / comment
@@ -162,9 +162,7 @@ local manual_pattern = (function()
 end)()
 
 local lines_pattern = Ct(
-    Ct(START * (P(1) - '\n') ^ 0 * END * '\n') ^ 0
-    * -1
-    * Ct(START * END) -- additional empty line for simplifying line/column calculations
+    Ct(START * (P(1) - '\n') ^ 0 * END * '\n') ^ 0 * -1 * Ct(START * END) -- additional empty line for simplifying line/column calculations
 )
 
 ---@param text string

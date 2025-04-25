@@ -91,13 +91,15 @@ function M.open(args, mods)
     else
         vim.cmd.split(exargs)
     end
-    set_options()
 end
 
---- TODO: parse and highlight buffer
+---@param buf integer
 ---@param ref string
 ---@return string? err
-function M._read(ref)
+function M._read(buf, ref)
+    vim.validate('buf', buf, 'number')
+    vim.validate('ref', ref, 'string')
+
     local manual, node = parse_info_ref(ref)
     if manual == '' then
         return ('not a valid manual "%s"'):format(ref)
@@ -114,8 +116,8 @@ function M._read(ref)
         local message = res.stderr and res.stderr:match ':%s*([^:]+)$' or ''
         return ('no manual found for "%s": %s'):format(ref, trim(message))
     end
-
-    local lines = split(assert(res.stdout), '\n')
+    local text = assert(res.stdout)
+    local lines = split(text, '\n')
 
     --- Extra line created by `vim.split` because `info` outputs `\n\n` at the end
     if lines[#lines] == '' then
@@ -126,6 +128,14 @@ function M._read(ref)
     vim.bo.readonly = false
     vim.bo.swapfile = false
     api.nvim_buf_set_lines(0, 0, -1, false, lines)
+
+    local info_manual = require('_info.parser').parse(text)
+    if not info_manual then
+        return 'fail parsing ' .. ref
+    end
+
+    vim.b[buf]._info_manual = info_manual
+
     set_options()
 end
 
