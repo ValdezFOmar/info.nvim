@@ -13,9 +13,13 @@ Read [`Info`][info] manuals inside Neovim.
   - [ ] Differences with [info.vim]
 - [ ] Support `node` as a command argument: `:Info coreutils ls`
 - [ ] Support `dir` entries
-- [ ] Support for `--usage` option (`info --usage info-stnd`)
-- [ ] Go to node under cursor (map to `K`?)
-- [ ] Commands for navigating to relative nodes (prev, next, up)
+- [x] Commands for navigating to relative nodes (prev, next, up)
+- [ ] Set up buffer keymaps
+  - [x] `K`: go to node under cursor
+  - [x] `gp`: go 'prev'
+  - [x] `gn`: go 'next'
+  - [x] `gu`: go 'up'
+  - [ ] `gO`: show menu entries
 - [ ] Highlight buffer
     - [ ] Conceal characters
     - [ ] References
