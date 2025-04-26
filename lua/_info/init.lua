@@ -146,29 +146,37 @@ local function set_options()
     vim.bo.swapfile = false
 end
 
----@param args string[]
+---@param args [string?, string?]
 ---@param mods table<string, any>
 ---@return string? err
 function M.open(args, mods)
-    local topic = args[1]
-    --- maybe `--debug=3` could be useful?
-    local cmd = { 'info', '--location', topic }
-    local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
-    if res.code ~= 0 then
-        return ('command error `%s`: %s'):format(table.concat(cmd, ' '), res.stderr or '')
+    local uri ---@type string?
+    if #args == 0 then
+        uri = build_uri('dir')
+    elseif #args == 1 then
+        local topic = args[1]
+        local cmd = { 'info', '--location', topic }
+        local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
+        if res.code ~= 0 then
+            return ('command error `%s`: %s'):format(vim.inspect(cmd), res.stderr or '')
+        end
+
+        local path = trim(res.stdout or '')
+
+        if path == '' then
+            return ('no manual found for "%s"'):format(topic)
+        elseif path == '*manpages*' then
+            return ('manpage available for "%s"'):format(topic)
+        end
+
+        ---@type string
+        local name = assert(vim.fs.basename(path):match '^([^.]+)%.info%.gz$')
+        uri = build_uri(name, topic)
+    elseif #args == 2 then
+        uri = build_uri(args[1], args[2])
+    else
+        return 'too many arguments (max: 2): ' .. vim.inspect(args)
     end
-
-    local path = trim(res.stdout or '')
-
-    if path == '' then
-        return ('no manual found for "%s"'):format(topic)
-    elseif path == '*manpages*' then
-        return ('manpage available for "%s"'):format(topic)
-    end
-
-    ---@type string
-    local name = assert(vim.fs.basename(path):match '^([^.]+)%.info%.gz$')
-    local uri = build_uri(name, topic)
     open_uri(uri, mods)
 end
 

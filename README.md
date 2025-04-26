@@ -10,9 +10,10 @@ Read [`Info`][info] manuals inside Neovim.
 
 - [ ] Docs
   - [ ] Usage/Commands/Keymaps
+  - [ ] `info-nvim.txt`
   - [ ] Differences with [info.vim]
-- [ ] Support `node` as a command argument: `:Info coreutils ls`
-- [ ] Support `dir` entries
+- [x] Support `node` as a command argument: `:Info coreutils ls`
+- [x] Support `dir` entries
 - [x] Commands for navigating to relative nodes (prev, next, up)
 - [ ] Set up buffer keymaps
   - [x] `K`: go to node under cursor
@@ -20,12 +21,18 @@ Read [`Info`][info] manuals inside Neovim.
   - [x] `gn`: go 'next'
   - [x] `gu`: go 'up'
   - [ ] `gO`: show menu entries
-- [ ] Highlight buffer
-    - [ ] Conceal characters
-    - [ ] References
-    - [ ] Footnotes
-    - [ ] Headings
-    - [ ] Menu entries
+  - [ ] Key map for showing all cross-references
+- [ ] Parsing
+  - [ ] Line positions for cross-references
+  - [ ] Headers (all levels)
+  - [ ] Text enclosed in special quotes (`‘’`).
+- [ ] Highlight/stylize buffer
+    - [ ] Strip `File` and `Node` keys in manual header like `info` does
+    - [ ] Conceal characters: Don't enable by default
+    - [ ] Cross References: label / (file)node
+    - [ ] Footnotes: Header
+    - [ ] Headings (all levels)
+    - [ ] Menu entries and Menu header
 
 ### Reconsider the structure of `info` URLs
 
@@ -39,6 +46,20 @@ Where:
   default to `Top`)
 - Supported query parameters are `line` and `column` for jumping to a
   specific part of the given URI
+
+### Backlog
+
+Parse the main `dir` index (`info --file dir`) and create a mapping for
+all the menu entries. This can help to:
+
+- Provide completions for the `:Info` editor command.
+- Better resolution for topics (`:Info dir` and `:Info info` give
+  different results compared to `info dir` and `info info`)
+
+## Developing/Testing
+
+Use `info`'s `--debug=3` flag to get more output about the how `info`
+finds Info manuals (see `info --usage info`).
 
 ## References
 

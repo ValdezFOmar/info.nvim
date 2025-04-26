@@ -12,7 +12,7 @@ command('Info', function(params)
     if err then
         vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
     end
-end, { nargs = 1 })
+end, { nargs = '*' })
 
 autocmd('BufReadCmd', {
     group = augroup('info.nvim', {}),
