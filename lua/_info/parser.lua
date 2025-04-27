@@ -178,10 +178,10 @@ end
 local function parse_reference(ref)
     ---@type string?, integer?
     local file, len = ref:match '^%(([^)]+)()%)'
-    local node = nil ---@type string?
+    local node ---@type string?
     if not len then
         node = ref
-    elseif len ~= #ref then
+    elseif #ref > len then
         node = ref:sub(len + 1)
     end
     assert(file or node, 'at least one of `file` or `node` should be defined')

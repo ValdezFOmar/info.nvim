@@ -18,7 +18,7 @@ autocmd('BufReadCmd', {
     group = augroup('info.nvim', {}),
     pattern = 'info://*',
     callback = function(ev)
-        local err = require('_info')._read(ev.buf, assert(ev.match:match '^info://(.+)$'))
+        local err = require('_info').read(ev.buf, assert(ev.match:match '^info://(.+)$'))
         if err then
             vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
             return

@@ -149,11 +149,14 @@ end
 ---@param mods table<string, any>
 ---@return string? err
 function M.open(args, mods)
+    vim.validate('args', args, 'table')
+    vim.validate('mods', mods, 'table')
+
     local uri ---@type string?
     if #args == 0 then
         uri = build_uri('dir')
     elseif #args == 1 then
-        local topic = args[1]
+        local topic = assert(args[1])
         local cmd = { 'info', '--location', topic }
         local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
         if res.code ~= 0 then
@@ -169,7 +172,7 @@ function M.open(args, mods)
         end
 
         ---@type string
-        local name = assert(vim.fs.basename(path):match '^([^.]+)%.info%.gz$')
+        local name = assert(vim.fs.basename(path):match '^([^.]+)')
         uri = build_uri(name, topic)
     elseif #args == 2 then
         uri = build_uri(args[1], args[2])
@@ -182,7 +185,7 @@ end
 ---@param buf integer
 ---@param ref string
 ---@return string? err
-function M._read(buf, ref)
+function M.read(buf, ref)
     vim.validate('buf', buf, 'number')
     vim.validate('ref', ref, 'string')
 
@@ -213,7 +216,7 @@ function M._read(buf, ref)
     vim.bo.modifiable = true
     vim.bo.readonly = false
     vim.bo.swapfile = false
-    api.nvim_buf_set_lines(0, 0, -1, false, lines)
+    api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 
     local info_manual = require('_info.parser').parse(text)
     if not info_manual then
