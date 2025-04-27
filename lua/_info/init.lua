@@ -34,7 +34,7 @@ local function build_uri(manual, node)
     if not node or node == manual then
         node = 'Top'
     end
-    return 'info://' .. encode(manual) .. '#' .. encode(node)
+    return 'info://' .. encode(manual) .. '/' .. encode(node)
 end
 
 ---@param uri string
@@ -126,12 +126,11 @@ end
 ---@param uri string
 ---@return string manual
 ---@return string? node
-local function parse_info_ref(uri)
+local function parse_ref(uri)
     local decode = vim.uri_decode
-    local parts = split(uri, '#')
+    local parts = split(uri, '/')
     local manual = decode(parts[1])
-    ---@type string?
-    local node = parts[2]
+    local node = parts[2] ---@type string?
     node = (node ~= nil and node ~= '') and decode(node) or nil
     return manual, node
 end
@@ -187,7 +186,7 @@ function M._read(buf, ref)
     vim.validate('buf', buf, 'number')
     vim.validate('ref', ref, 'string')
 
-    local manual, node = parse_info_ref(ref)
+    local manual, node = parse_ref(ref)
     if manual == '' then
         return ('not a valid manual "%s"'):format(ref)
     end
