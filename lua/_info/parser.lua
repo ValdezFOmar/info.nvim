@@ -79,7 +79,7 @@ local manual_pattern = (function()
         * B '\n' -- menu entries only appear at the start of lines
         * START
         * '* '
-        * -#P 'Menu:' -- this is not an entry, but the header for the input
+        * - #P 'Menu:' -- this is not an entry, but the header for the input
         * reference
         * END
         * SWALLOW_LINE -- entry description / comment
@@ -99,7 +99,8 @@ local manual_pattern = (function()
 end)()
 
 local lines_pattern = Ct(
-    Ct(START * (P(1) - '\n') ^ 0 * END * '\n') ^ 0 * -1 * Ct(START * END) -- additional empty line for simplifying line/column calculations
+    Ct(START * (P(1) - '\n') ^ 0 * END * '\n') ^ 0 * -1 *
+    Ct(START * END) -- additional empty line for simplifying line/column calculations
 )
 
 ---@param text string
@@ -130,17 +131,22 @@ end
 ---@return info.Manual.Node
 local function build_relation(rel, this_file)
     local file, node = parse_reference(rel.value.text)
+    ---@type info.Manual.Node
     return {
-        start = { line = 1, col = rel.start - 1 },
-        end_ = { line = 1, col = rel.end_ - 2 }, -- Extra `-1` to make end-inclusive
         target = {
             file = file or this_file,
             node = node or 'Top',
         },
+        range = {
+            start_row = 1,
+            start_col = rel.start - 1,
+            end_row = 1,
+            end_col = rel.end_ - 2, -- Extra `-1` to make end-inclusive
+        },
     }
 end
 
----@class info.build_xref.Positions
+---@class info.build_xref.Offset
 ---@field start_index integer
 ---@field start_line integer
 ---@field end_index integer
@@ -148,9 +154,9 @@ end
 
 ---@param ref info.parser.Reference
 ---@param this_file string
----@param pos info.build_xref.Positions
+---@param offset info.build_xref.Offset
 ---@return info.Manual.XRef
-local function build_xref(ref, this_file, pos)
+local function build_xref(ref, this_file, offset)
     local label = fold_spaces(ref.label.text)
     local file, node ---@type string?, string?
     if ref.target then
@@ -160,18 +166,16 @@ local function build_xref(ref, this_file, pos)
     end
     ---@type info.Manual.XRef
     return {
-        start = {
-            col = ref.start - pos.start_index,
-            line = pos.start_line,
-        },
-        end_ = {
-            col = ref.end_ - pos.end_index - 1, -- Extra `-1` to make end-inclusive
-            line = pos.end_line,
-        },
         label = label,
         target = {
             file = file or this_file,
             node = node or 'Top',
+        },
+        range = {
+            start_row = offset.start_line,
+            start_col = ref.start - offset.start_index,
+            end_row = offset.end_line,
+            end_col = ref.end_ - offset.end_index - 1, -- Extra `-1` to make end-inclusive
         },
     }
 end

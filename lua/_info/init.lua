@@ -51,21 +51,18 @@ local function open_uri(uri, mods)
     end
 end
 
----@param line integer
+---@param row integer
 ---@param col integer
 ---@param range info.TextRange
 ---@return boolean
-local function in_range(line, col, range)
-    local start = range.start
-    local end_ = range.end_
-
-    if line >= start.line and line <= end_.line then
-        if start.line == end_.line then
-            return col >= start.col and col <= end_.col
-        elseif line == start.line then
-            return col >= start.col
-        elseif line == end_.line then
-            return col <= end_.col
+local function in_range(row, col, range)
+    if row >= range.start_row and row <= range.end_row then
+        if range.start_row == range.end_row then
+            return col >= range.start_col and col <= range.end_col
+        elseif row == range.start_row then
+            return col >= range.start_col
+        elseif row == range.end_row then
+            return col <= range.end_col
         else
             return true -- cursor is in the middle of the start and end line, so is always in range
         end
@@ -77,15 +74,14 @@ end
 ---@param mods table
 function M.follow(mods)
     local manual = vim.b._info_manual ---@type info.Manual
-    local pos = api.nvim_win_get_cursor(0)
-    local line, col = pos[1], pos[2]
-    local line_text = api.nvim_buf_get_lines(0, line - 1, line, false)[1]
+    local row, col = unpack(api.nvim_win_get_cursor(0))
+    local line_text = api.nvim_buf_get_lines(0, row - 1, row, false)[1]
 
     local uri ---@type string?
     --- check if current line is a menu entry
     if vim.startswith(line_text, '* ') then
         for _, entry in ipairs(manual.menu_entries) do
-            if in_range(line, col, entry) then
+            if in_range(row, col, entry.range) then
                 uri = build_uri(entry.target.file, entry.target.node)
                 break
             end
@@ -94,7 +90,7 @@ function M.follow(mods)
 
     if not uri then
         for _, entry in ipairs(manual.xreferences) do
-            if in_range(line, col, entry) then
+            if in_range(row, col, entry.range) then
                 uri = build_uri(entry.target.file, entry.target.node)
                 break
             end

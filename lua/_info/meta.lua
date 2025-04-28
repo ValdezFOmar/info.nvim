@@ -32,28 +32,26 @@ error('cannot require a meta file')
 --- Final manual data stored in `vim.b._info_manual`
 ---
 
----Position of a single character in a buffer.
----Uses (1, 0) indexing for `line` and `col` respectively.
----@class info.CharPosition
----@field line integer 1-indexed
----@field col integer 0-indexed
-
 ---Position of a piece of text in a buffer.
----The format of `start` and `end_` make it seamless to test if the cursor
+---The format of `(start,end)_row` and `(start,end)_col` make it seamless to test if the cursor
 ---is contained withing the text using the returned value of `nvim_win_get_cursor()`.
 ---The range is end-inclusive to make is easier to use in Lua and with the extmarks API.
 ---@class info.TextRange
----@field start info.CharPosition
----@field end_ info.CharPosition
+---@field start_row integer 1-indexed
+---@field start_col integer 0-indexed
+---@field end_row integer 1-indexed
+---@field end_col integer 0-indexed
 
 ---@class info.Manual.Target
 ---@field file string
 ---@field node string
 
----@class info.Manual.Node : info.TextRange
+---@class info.Manual.Node
+---@field range info.TextRange
 ---@field target info.Manual.Target
 
----@class info.Manual.XRef : info.TextRange
+---@class info.Manual.XRef
+---@field range info.TextRange
 ---@field label string
 ---@field target info.Manual.Target
 
