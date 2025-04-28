@@ -76,7 +76,7 @@ end
 
 ---@param mods table
 function M.follow(mods)
-    local manual = vim.b._info_manual ---@type info.Document
+    local manual = vim.b._info_manual ---@type info.Manual
     local pos = api.nvim_win_get_cursor(0)
     local line, col = pos[1], pos[2]
     local line_text = api.nvim_buf_get_lines(0, line - 1, line, false)[1]
@@ -111,8 +111,8 @@ end
 ---@param key 'Prev'|'Next'|'Up'
 ---@param mods table
 function M.goto_node(key, mods)
-    local manual = vim.b._info_manual ---@type info.Document
-    local node = manual.relations[key:lower()] ---@type info.Document.Relation?
+    local manual = vim.b._info_manual ---@type info.Manual
+    local node = manual.relations[key:lower()] ---@type info.Manual.Node?
     if not node then
         return vim.notify(
             "info.lua: no '" .. key .. "' pointer for this node",
