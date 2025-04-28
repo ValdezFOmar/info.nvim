@@ -126,10 +126,30 @@ local function parse_reference(ref)
     return file, node
 end
 
+---@class info.parser.Offset
+---@field start_offset integer
+---@field start_line integer
+---@field end_offset integer
+---@field end_line integer
+
+---@param pos info.parser.Position
+---@param offset info.parser.Offset
+---@return info.TextRange
+local function calc_range(pos, offset)
+    ---@type info.TextRange
+    return {
+        start_row = offset.start_line,
+        start_col = pos.start - offset.start_offset,
+        end_row = offset.end_line,
+        end_col = pos.end_ - offset.end_offset - 1, -- Extra `-1` to make end-inclusive
+    }
+end
+
 ---@param rel info.parser.Header.Pair
 ---@param this_file string
+---@param offset info.parser.Offset
 ---@return info.Manual.Node
-local function build_relation(rel, this_file)
+local function build_relation(rel, this_file, offset)
     local file, node = parse_reference(rel.value.text)
     ---@type info.Manual.Node
     return {
@@ -137,24 +157,13 @@ local function build_relation(rel, this_file)
             file = file or this_file,
             node = node or 'Top',
         },
-        range = {
-            start_row = 1,
-            start_col = rel.start - 1,
-            end_row = 1,
-            end_col = rel.end_ - 2, -- Extra `-1` to make end-inclusive
-        },
+        range = calc_range(rel, offset),
     }
 end
 
----@class info.build_xref.Offset
----@field start_index integer
----@field start_line integer
----@field end_index integer
----@field end_line integer
-
 ---@param ref info.parser.Reference
 ---@param this_file string
----@param offset info.build_xref.Offset
+---@param offset info.parser.Offset
 ---@return info.Manual.XRef
 local function build_xref(ref, this_file, offset)
     local label = fold_spaces(ref.label.text)
@@ -171,12 +180,7 @@ local function build_xref(ref, this_file, offset)
             file = file or this_file,
             node = node or 'Top',
         },
-        range = {
-            start_row = offset.start_line,
-            start_col = ref.start - offset.start_index,
-            end_row = offset.end_line,
-            end_col = ref.end_ - offset.end_index - 1, -- Extra `-1` to make end-inclusive
-        },
+        range = calc_range(ref, offset),
     }
 end
 
@@ -213,9 +217,9 @@ function M.parse(text)
 
         local xref = build_xref(element, file, {
             start_line = line,
-            start_index = pos.start,
+            start_offset = pos.start,
             end_line = element.end_ <= pos.end_ and line or next_line,
-            end_index = element.end_ <= pos.end_ and pos.start or next_pos.start,
+            end_offset = element.end_ <= pos.end_ and pos.start or next_pos.start,
         })
         if element.type == ElementType.MenuEntry then
             table.insert(menu_entries, xref)
@@ -228,15 +232,21 @@ function M.parse(text)
     local next = caps.header.next
     local prev = caps.header.prev
     local up = caps.header.up
+    local header_offset = {
+        start_line = 1,
+        start_offset = 1,
+        end_line = 1,
+        end_offset = 1,
+    }
 
     ---@type info.Manual
     return {
         file = file,
         node = node,
         relations = {
-            next = next and build_relation(next, file),
-            prev = prev and build_relation(prev, file),
-            up = up and build_relation(up, file),
+            next = next and build_relation(next, file, header_offset),
+            prev = prev and build_relation(prev, file, header_offset),
+            up = up and build_relation(up, file, header_offset),
         },
         xreferences = xreferences,
         menu_entries = menu_entries,
