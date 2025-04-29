@@ -33,8 +33,10 @@ local function Cgt(name, pattern)
     return Cg(Ct(pattern), name)
 end
 
+---Makes pattern optional (matches 0 or 1 times).
 ---@param pattern any
-local function opt(pattern)
+---@return vim.lpeg.Pattern
+local function O(pattern)
     return P(pattern) ^ -1
 end
 
@@ -66,26 +68,26 @@ local manual_pattern = (function()
     local node_header = Cgt('file', file_name)
         * COMMA
         * Cgt('node', this_node)
-        * opt(COMMA * Cgt('next', next_node))
-        * opt(COMMA * Cgt('prev', prev_node))
-        * opt(COMMA * Cgt('up', up_node))
+        * O(COMMA * Cgt('next', next_node))
+        * O(COMMA * Cgt('prev', prev_node))
+        * O(COMMA * Cgt('up', up_node))
         * SWALLOW_LINE -- Extra text (see `info --file dir`)
 
     local reference_text = (P(1) - ':') ^ 1
     local reference_node = (P(1) - S '.,\t\n') ^ 1
     local reference = Cgt('label', Cpos(reference_text))
         * ':'
-        * (':' + SP * Cgt('target', Cpos(reference_node)) * opt(S'.,'))
+        * (':' + SP * Cgt('target', Cpos(reference_node)) * O(S '.,'))
 
     local line_offset = P '(line' * SP * Cg(lpeg.R '09' ^ 1 / tonumber, 'line') * ')'
     local menu_entry = Ctype(ElementType.MenuEntry)
         * B '\n' -- menu entries only appear at the start of lines
         * START
         * '* '
-        * - #P 'Menu:' -- this is not an entry, but the header for the input
+        * -#P 'Menu:' -- this is not an entry, but the header for the input
         * reference
         * END
-        * opt(opt('\n') * SP * line_offset) -- line offset may appear in the next line
+        * O(O '\n' * SP * line_offset) -- line offset may appear in the next line
         * SWALLOW_LINE -- entry description / comment
 
     local inline_reference = Ctype(ElementType.XReference)
