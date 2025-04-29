@@ -28,13 +28,30 @@ end
 
 ---@param manual string
 ---@param node string?
+---@param line integer?
 ---@return string
-local function build_uri(manual, node)
+local function build_uri(manual, node, line)
     local encode = vim.uri_encode
     if not node or node == manual then
         node = 'Top'
     end
-    return 'info://' .. encode(manual) .. '/' .. encode(node)
+    local params = line and '?line=' .. line or ''
+    return 'info://' .. encode(manual) .. '/' .. encode(node) .. params
+end
+
+---@param uri string
+---@return string manual
+---@return string? node
+---@return integer? line
+local function parse_ref(uri)
+    local decode = vim.uri_decode
+    local route, params = unpack(split(uri, '?'))
+    local line = params and params:match 'line=(%d+)' ---@type string?
+    local manual, node = route:match '^([^/]+)/([^/]+)$' ---@type string, string?
+
+    manual = decode(assert(manual, 'failed to parse URI: ' .. uri))
+    node = (node ~= nil and node ~= '') and decode(node) or nil
+    return manual, node, tonumber(line)
 end
 
 ---@param uri string
@@ -77,30 +94,31 @@ function M.follow(mods)
     local row, col = unpack(api.nvim_win_get_cursor(0))
     local line_text = api.nvim_buf_get_lines(0, row - 1, row, false)[1]
 
-    local uri ---@type string?
+    local xref ---@type info.Manual.XRef?
     --- check if current line is a menu entry
     if vim.startswith(line_text, '* ') then
         for _, entry in ipairs(manual.menu_entries) do
             if in_range(row, col, entry.range) then
-                uri = build_uri(entry.file, entry.node)
+                xref = entry
                 break
             end
         end
     end
 
-    if not uri then
+    if not xref then
         for _, entry in ipairs(manual.xreferences) do
             if in_range(row, col, entry.range) then
-                uri = build_uri(entry.file, entry.node)
+                xref = entry
                 break
             end
         end
     end
 
-    if not uri then
+    if not xref then
         vim.notify('info.lua: no cross-reference under cursor', vim.log.levels.ERROR)
         return
     end
+    local uri = build_uri(xref.file, xref.node, xref.line)
     open_uri(uri, mods)
 end
 
@@ -117,18 +135,6 @@ function M.goto_node(key, mods)
     end
     local uri = build_uri(node.file, node.node)
     open_uri(uri, mods)
-end
-
----@param uri string
----@return string manual
----@return string? node
-local function parse_ref(uri)
-    local decode = vim.uri_decode
-    local parts = split(uri, '/')
-    local manual = decode(parts[1])
-    local node = parts[2] ---@type string?
-    node = (node ~= nil and node ~= '') and decode(node) or nil
-    return manual, node
 end
 
 local function set_options()
@@ -185,7 +191,7 @@ function M.read(buf, ref)
     vim.validate('buf', buf, 'number')
     vim.validate('ref', ref, 'string')
 
-    local manual, node = parse_ref(ref)
+    local manual, node, line_offset = parse_ref(ref)
     if manual == '' then
         return ('not a valid manual "%s"'):format(ref)
     end
@@ -213,6 +219,12 @@ function M.read(buf, ref)
     vim.bo.readonly = false
     vim.bo.swapfile = false
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+    if line_offset then
+        local winid = fn.bufwinid(buf)
+        local row = math.min(line_offset, api.nvim_buf_line_count(buf))
+        api.nvim_win_set_cursor(winid, { row, 0 })
+    end
 
     local parser = require '_info.parser'
     local info_manual = parser.parse(text)
