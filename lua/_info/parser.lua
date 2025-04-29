@@ -188,28 +188,37 @@ end
 ---@field start integer
 ---@field end_ integer
 
+---Iterate over the lines of `text` retrieving the current and next line.
+---Yields an additional line at the end to simplify some operations.
 ---@param text string
 ---@return fun(): info.iter_lines.Line, info.iter_lines.Line
 local function iter_lines(text)
     local line_ends = text:gmatch '()\n'
     local row = 1
-    local start = 1
     local line = {
         row = row,
-        start = start,
+        start = 1,
         end_ = line_ends() --[[@as integer]],
     }
 
+    local yielded_extra_line = false
     return function()
+        row = row + 1
+        local start = line.end_ + 1
         local end_ = line_ends() --[[@as integer]]
         if not end_ then
-            return ---@diagnostic disable-line: missing-return-value
+            if not yielded_extra_line then
+                yielded_extra_line = true
+                end_ = start -- yield empty line
+            else
+                ---@diagnostic disable-next-line: missing-return-value
+                return
+            end
         end
         local prev_line = line
-        row = row + 1
         line = {
             row = row,
-            start = prev_line.end_ + 1,
+            start = start,
             end_ = end_,
         }
         return prev_line, line
@@ -234,7 +243,7 @@ function M.parse(text)
     for _, el in ipairs(caps.elements) do
         while not (el.start >= line.start and el.start <= line.end_) do
             line, next_line = lines()
-            assert(line, next_line, 'no elements at the final line')
+            assert(line, next_line, 'no elements at the final line') -- see `iter_lines`
         end
 
         local xref = build_xref(el, file_name, {
