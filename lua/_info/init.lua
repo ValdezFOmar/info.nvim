@@ -150,7 +150,7 @@ function M.open(args, mods)
 
     local uri ---@type string?
     if #args == 0 then
-        uri = build_uri('dir')
+        uri = build_uri 'dir'
     elseif #args == 1 then
         local topic = assert(args[1])
         local cmd = { 'info', '--location', topic }
@@ -214,7 +214,7 @@ function M.read(buf, ref)
     vim.bo.swapfile = false
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 
-    local parser = require('_info.parser')
+    local parser = require '_info.parser'
     local info_manual = parser.parse(text)
     if not info_manual then
         return 'fail parsing ' .. ref

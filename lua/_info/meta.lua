@@ -1,5 +1,5 @@
 ---@meta
-error('cannot require a meta file')
+error 'cannot require a meta file'
 
 ---@class info.parser.Position
 ---@field start integer
