@@ -75,8 +75,9 @@ local manual_pattern = (function()
     local reference_node = (P(1) - S '.,\t\n') ^ 1
     local reference = Cgt('label', Cpos(reference_text))
         * ':'
-        * (':' + SP * Cgt('target', Cpos(reference_node)))
+        * (':' + SP * Cgt('target', Cpos(reference_node)) * opt(S'.,'))
 
+    local line_offset = P '(line' * SP * Cg(lpeg.R '09' ^ 1 / tonumber, 'line') * ')'
     local menu_entry = Ctype(ElementType.MenuEntry)
         * B '\n' -- menu entries only appear at the start of lines
         * START
@@ -84,6 +85,7 @@ local manual_pattern = (function()
         * - #P 'Menu:' -- this is not an entry, but the header for the input
         * reference
         * END
+        * opt(opt('\n') * SP * line_offset) -- line offset may appear in the next line
         * SWALLOW_LINE -- entry description / comment
 
     local inline_reference = Ctype(ElementType.XReference)
@@ -179,6 +181,7 @@ local function build_xref(ref, this_file, offset)
         target = {
             file = file or this_file,
             node = node or 'Top',
+            line = ref.line,
         },
     }
 end
@@ -310,6 +313,7 @@ local function format_ref(ref)
         label = ref.label.text,
         file = ref.target.file,
         node = ref.target.node,
+        line = ref.target.line,
     }
 end
 

@@ -15,6 +15,7 @@ error('cannot require a meta file')
 ---@field type info.Element
 ---@field label info.parser.TextPosition
 ---@field target? info.parser.TextPosition
+---@field line? integer
 
 ---@class info.parser.Header
 ---@field file info.parser.Header.Pair
@@ -50,6 +51,7 @@ error('cannot require a meta file')
 ---@class info.doc.Reference.Target
 ---@field file string
 ---@field node string
+---@field line? number
 ---field range? info.TextRange `nil` if a shorthand reference was used
 
 ---Cross-reference pointing to a manual's node.
@@ -92,6 +94,7 @@ error('cannot require a meta file')
 ---@field label string
 ---@field file string
 ---@field node string
+---@field line? number
 
 ---@class info.Manual.Relations
 ---@field next? info.Manual.Node
