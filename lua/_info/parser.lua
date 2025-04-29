@@ -1,3 +1,5 @@
+local map = vim.tbl_map
+
 local M = {}
 
 ---@enum info.Element
@@ -98,11 +100,6 @@ local manual_pattern = (function()
     return Ct(Cgt('header', node_header) * Cgt('elements', line ^ 0) * -1)
 end)()
 
-local lines_pattern = Ct(
-    Ct(START * (P(1) - '\n') ^ 0 * END * '\n') ^ 0 * -1 *
-    Ct(START * END) -- additional empty line for simplifying line/column calculations
-)
-
 ---@param text string
 ---@return string
 local function fold_spaces(text)
@@ -148,23 +145,24 @@ end
 ---@param rel info.parser.Header.Pair
 ---@param this_file string
 ---@param offset info.parser.Offset
----@return info.Manual.Node
+---@return info.doc.Header.Relation
 local function build_relation(rel, this_file, offset)
     local file, node = parse_reference(rel.value.text)
-    ---@type info.Manual.Node
+    ---@type info.doc.Header.Relation
     return {
+        range = calc_range(rel, offset),
         target = {
+            range = calc_range(rel.value, offset),
             file = file or this_file,
             node = node or 'Top',
         },
-        range = calc_range(rel, offset),
     }
 end
 
 ---@param ref info.parser.Reference
 ---@param this_file string
 ---@param offset info.parser.Offset
----@return info.Manual.XRef
+---@return info.doc.Reference
 local function build_xref(ref, this_file, offset)
     local label = fold_spaces(ref.label.text)
     local file, node ---@type string?, string?
@@ -173,65 +171,91 @@ local function build_xref(ref, this_file, offset)
     else
         file, node = this_file, label
     end
-    ---@type info.Manual.XRef
+    -- TODO: maybe calculate the range for `label` and `target`
+    ---@type info.doc.Reference
     return {
-        label = label,
+        range = calc_range(ref, offset),
+        label = { text = label },
         target = {
             file = file or this_file,
             node = node or 'Top',
         },
-        range = calc_range(ref, offset),
     }
+end
+
+---@class info.iter_lines.Line
+---@field row integer
+---@field start integer
+---@field end_ integer
+
+---@param text string
+---@return fun(): info.iter_lines.Line, info.iter_lines.Line
+local function iter_lines(text)
+    local line_ends = text:gmatch '()\n'
+    local row = 1
+    local start = 1
+    local line = {
+        row = row,
+        start = start,
+        end_ = line_ends() --[[@as integer]],
+    }
+
+    return function()
+        local end_ = line_ends() --[[@as integer]]
+        if not end_ then
+            return ---@diagnostic disable-line: missing-return-value
+        end
+        local prev_line = line
+        row = row + 1
+        line = {
+            row = row,
+            start = prev_line.end_ + 1,
+            end_ = end_,
+        }
+        return prev_line, line
+    end
 end
 
 ---Parse and info document node.
 ---@param text string
----@return info.Manual?
+---@return info.doc.Document?
 function M.parse(text)
-    ---@type info.parser.Captures?
-    local caps = manual_pattern:match(text)
+    local caps = manual_pattern:match(text) ---@type info.parser.Captures?
     if not caps then
         return
     end
 
-    local file = caps.header.file.value.text
-    local xreferences = {} ---@type info.Manual.XRef[]
-    local menu_entries = {} ---@type info.Manual.XRef[]
+    local file_name = caps.header.file.value.text
+    local menu_entries = {}
+    local xreferences = {}
+    local lines = iter_lines(text)
+    local line, next_line = lines()
 
-    local lines = vim.iter(ipairs(lines_pattern:match(text)))
-
-    local line ---@type integer
-    local pos ---@type info.parser.Position
-    local next_line ---@type integer
-    local next_pos ---@type info.parser.Position
-
-    line, pos = lines:next() --[[@as ...]]
-    next_line, next_pos = lines:next() --[[@as ...]]
-
-    for _, element in ipairs(caps.elements) do
-        while not (element.start >= pos.start and element.start <= pos.end_) do
-            line, pos = next_line, next_pos
-            next_line, next_pos = lines:next() --[[@as ...]]
-            assert(next_line and next_pos, "there's always an extra line") --- see `lines_pattern`
+    for _, el in ipairs(caps.elements) do
+        while not (el.start >= line.start and el.start <= line.end_) do
+            line, next_line = lines()
+            assert(line, next_line, 'no elements at the final line')
         end
 
-        local xref = build_xref(element, file, {
-            start_line = line,
-            start_offset = pos.start,
-            end_line = element.end_ <= pos.end_ and line or next_line,
-            end_offset = element.end_ <= pos.end_ and pos.start or next_pos.start,
+        local xref = build_xref(el, file_name, {
+            start_line = line.row,
+            start_offset = line.start,
+            end_line = el.end_ <= line.end_ and line.row or next_line.row,
+            end_offset = el.end_ <= line.end_ and line.start or next_line.start,
         })
-        if element.type == ElementType.MenuEntry then
+        if el.type == ElementType.MenuEntry then
             table.insert(menu_entries, xref)
-        elseif element.type == ElementType.XReference then
+        elseif el.type == ElementType.XReference then
             table.insert(xreferences, xref)
         end
     end
 
-    local node = caps.header.node.value.text
+    local file = caps.header.file
+    local node = caps.header.node
     local next = caps.header.next
     local prev = caps.header.prev
     local up = caps.header.up
+
     local header_offset = {
         start_line = 1,
         start_offset = 1,
@@ -239,17 +263,76 @@ function M.parse(text)
         end_offset = 1,
     }
 
+    ---@type info.doc.Document
+    return {
+        header = {
+            file = {
+                range = calc_range(file, header_offset),
+                target = {
+                    range = calc_range(file.value, header_offset),
+                    text = file.value.text,
+                },
+            },
+            node = {
+                range = calc_range(node, header_offset),
+                target = {
+                    range = calc_range(node.value, header_offset),
+                    text = node.value.text,
+                },
+            },
+            next = next and build_relation(next, file_name, header_offset),
+            prev = prev and build_relation(prev, file_name, header_offset),
+            up = up and build_relation(up, file_name, header_offset),
+        },
+        menu = {
+            header = {},
+            entries = menu_entries,
+        },
+        references = xreferences,
+    }
+end
+
+---@param ref info.doc.Reference
+---@return info.Manual.XRef
+local function format_ref(ref)
+    ---@type info.Manual.XRef
+    return {
+        range = ref.range,
+        label = ref.label.text,
+        target = {
+            file = ref.target.file,
+            node = ref.target.node,
+        },
+    }
+end
+
+---Format the result of `parse` to the preferred format for storing as buffer variable.
+---@param doc info.doc.Document
+---@return info.Manual
+function M.as_buffer_data(doc)
+    local next = doc.header.next
+    local prev = doc.header.prev
+    local up = doc.header.up
     ---@type info.Manual
     return {
-        file = file,
-        node = node,
+        file = doc.header.file.target.text,
+        node = doc.header.node.target.text,
+        menu_entries = map(format_ref, doc.menu.entries),
+        xreferences = map(format_ref, doc.references),
         relations = {
-            next = next and build_relation(next, file, header_offset),
-            prev = prev and build_relation(prev, file, header_offset),
-            up = up and build_relation(up, file, header_offset),
+            next = next and {
+                range = next.range,
+                target = next.target,
+            },
+            prev = prev and {
+                range = prev.range,
+                target = prev.target,
+            },
+            up = up and {
+                range = up.range,
+                target = up.target,
+            },
         },
-        xreferences = xreferences,
-        menu_entries = menu_entries,
     }
 end
 

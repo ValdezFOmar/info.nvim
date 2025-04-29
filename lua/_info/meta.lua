@@ -29,6 +29,47 @@ error('cannot require a meta file')
 ---@field elements info.parser.Reference[]
 
 ---
+--- Final result of parsing an Info manual's node
+---
+
+---@class info.doc.Header.Text
+---@field range info.TextRange
+---@field target { range: info.TextRange, text: string }
+
+---@class info.doc.Header.Relation
+---@field range info.TextRange
+---@field target info.doc.Reference.Target
+
+---@class info.doc.Header
+---@field file info.doc.Header.Text
+---@field node info.doc.Header.Text
+---@field next? info.doc.Header.Relation
+---@field prev? info.doc.Header.Relation
+---@field up? info.doc.Header.Relation
+
+---@class info.doc.Reference.Target
+---@field file string
+---@field node string
+---field range? info.TextRange `nil` if a shorthand reference was used
+
+---Cross-reference pointing to a manual's node.
+---@class info.doc.Reference
+---@field range info.TextRange
+---@field label { text: string }
+---@field target info.doc.Reference.Target
+
+---@class info.doc.Menu
+---@field header { range: info.TextRange }
+---@field entries info.doc.Reference[]
+
+---All data necessary to highlight, render and navigate an Info manual.
+---Elements' position is adjusted to rows/columns.
+---@class info.doc.Document
+---@field header info.doc.Header
+---@field menu info.doc.Menu
+---@field references info.doc.Reference[]
+
+---
 --- Final manual data stored in `vim.b._info_manual`
 ---
 

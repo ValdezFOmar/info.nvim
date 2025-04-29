@@ -214,12 +214,13 @@ function M.read(buf, ref)
     vim.bo.swapfile = false
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 
-    local info_manual = require('_info.parser').parse(text)
+    local parser = require('_info.parser')
+    local info_manual = parser.parse(text)
     if not info_manual then
         return 'fail parsing ' .. ref
     end
 
-    vim.b[buf]._info_manual = info_manual
+    vim.b[buf]._info_manual = parser.as_buffer_data(info_manual)
 
     set_options()
 end
