@@ -83,18 +83,15 @@ error('cannot require a meta file')
 ---@field end_row integer 1-indexed
 ---@field end_col integer 0-indexed
 
----@class info.Manual.Target
+---@class info.Manual.Node
 ---@field file string
 ---@field node string
-
----@class info.Manual.Node
----@field range info.TextRange
----@field target info.Manual.Target
 
 ---@class info.Manual.XRef
 ---@field range info.TextRange
 ---@field label string
----@field target info.Manual.Target
+---@field file string
+---@field node string
 
 ---@class info.Manual.Relations
 ---@field next? info.Manual.Node

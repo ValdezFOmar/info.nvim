@@ -299,10 +299,8 @@ local function format_ref(ref)
     return {
         range = ref.range,
         label = ref.label.text,
-        target = {
-            file = ref.target.file,
-            node = ref.target.node,
-        },
+        file = ref.target.file,
+        node = ref.target.node,
     }
 end
 
@@ -321,16 +319,16 @@ function M.as_buffer_data(doc)
         xreferences = map(format_ref, doc.references),
         relations = {
             next = next and {
-                range = next.range,
-                target = next.target,
+                file = next.target.file,
+                node = next.target.node,
             },
             prev = prev and {
-                range = prev.range,
-                target = prev.target,
+                file = prev.target.file,
+                node = prev.target.node,
             },
             up = up and {
-                range = up.range,
-                target = up.target,
+                file = up.target.file,
+                node = up.target.node,
             },
         },
     }

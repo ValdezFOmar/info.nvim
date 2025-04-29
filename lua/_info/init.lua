@@ -82,7 +82,7 @@ function M.follow(mods)
     if vim.startswith(line_text, '* ') then
         for _, entry in ipairs(manual.menu_entries) do
             if in_range(row, col, entry.range) then
-                uri = build_uri(entry.target.file, entry.target.node)
+                uri = build_uri(entry.file, entry.node)
                 break
             end
         end
@@ -91,7 +91,7 @@ function M.follow(mods)
     if not uri then
         for _, entry in ipairs(manual.xreferences) do
             if in_range(row, col, entry.range) then
-                uri = build_uri(entry.target.file, entry.target.node)
+                uri = build_uri(entry.file, entry.node)
                 break
             end
         end
@@ -115,7 +115,7 @@ function M.goto_node(key, mods)
             vim.log.levels.ERROR
         )
     end
-    local uri = build_uri(node.target.file, node.target.node)
+    local uri = build_uri(node.file, node.node)
     open_uri(uri, mods)
 end
 
