@@ -6,6 +6,21 @@ Read [`Info`][info] manuals inside Neovim.
 
 - GNU [`info`][info-cli] command-line tool. Version 7.x is recommended.
 
+## `info` URIs
+
+Example:
+
+```
+info://file.info/node?line=15
+```
+
+Where:
+- `file.info` is the name of the file/manual
+- `/node` is the specific node visited (if the node is omitted then
+  default to `Top`)
+- Supports `line` as a query parameter (jump to this line in the node).
+
+
 ## TODO
 
 - [ ] Docs
@@ -23,7 +38,7 @@ Read [`Info`][info] manuals inside Neovim.
   - [ ] `gO`: show menu entries
   - [ ] Key map for showing all cross-references
 - [ ] Parsing
-  - [ ] Line positions for cross-references
+  - [x] Line positions for cross-references
   - [ ] Headers (all levels)
   - [ ] Text enclosed in special quotes (`‘’`).
 - [ ] Highlight/stylize buffer
@@ -33,19 +48,6 @@ Read [`Info`][info] manuals inside Neovim.
     - [ ] Footnotes: Header
     - [ ] Headings (all levels)
     - [ ] Menu entries and Menu header
-
-### Reconsider the structure of `info` URLs
-
-```
-info://file.info/node?line=15&column=10
-```
-
-Where:
-- `file.info` is name of the file/manual (keep `.info` suffix?)
-- `/node` is the specific node visited (if the node is omitted the
-  default to `Top`)
-- Supported query parameters are `line` and `column` for jumping to a
-  specific part of the given URI
 
 ### Backlog
 

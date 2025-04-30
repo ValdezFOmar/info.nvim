@@ -157,9 +157,13 @@ function M.open(args, mods)
     local uri ---@type string?
     if #args == 0 then
         uri = build_uri 'dir'
-    elseif #args == 1 then
-        local topic = assert(args[1])
-        local cmd = { 'info', '--location', topic }
+    elseif #args == 1 or #args == 2 then
+        local cmd
+        if #args == 1 then
+            cmd = { 'info', '--location', args[1] }
+        else
+            cmd = { 'info', '--location', '--file', args[1], '--node', args[2] }
+        end
         local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
         if res.code ~= 0 then
             return ('command error `%s`: %s'):format(vim.inspect(cmd), res.stderr or '')
@@ -168,16 +172,13 @@ function M.open(args, mods)
         local path = trim(res.stdout or '')
 
         if path == '' then
-            return ('no manual found for "%s"'):format(topic)
+            return ('no manual found for "%s"'):format(table.concat(args, ' '))
         elseif path == '*manpages*' then
-            return ('manpage available for "%s"'):format(topic)
+            return ('manpage available for "%s"'):format(table.concat(args, ' '))
         end
 
-        ---@type string
-        local name = assert(vim.fs.basename(path):match '^([^.]+)')
-        uri = build_uri(name, topic)
-    elseif #args == 2 then
-        uri = build_uri(args[1], args[2])
+        local name = assert(vim.fs.basename(path):match '^([^.]+)') ---@type string
+        uri = build_uri(name, args[2])
     else
         return 'too many arguments (max: 2): ' .. vim.inspect(args)
     end
