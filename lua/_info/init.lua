@@ -192,12 +192,12 @@ function M.read(buf, ref)
     vim.validate('buf', buf, 'number')
     vim.validate('ref', ref, 'string')
 
-    local manual, node, line_offset = parse_ref(ref)
-    if manual == '' then
+    local file, node, line_offset = parse_ref(ref)
+    if file == '' then
         return ('not a valid manual "%s"'):format(ref)
     end
 
-    local cmd = { 'info', '--output', '-', '--file', manual }
+    local cmd = { 'info', '--output', '-', '--file', file }
     if node then
         table.insert(cmd, '--node')
         table.insert(cmd, node)
@@ -220,6 +220,9 @@ function M.read(buf, ref)
     vim.bo.readonly = false
     vim.bo.swapfile = false
     api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    -- don't allow further changes in case parsing fails
+    vim.bo.modifiable = false
+    vim.bo.readonly = true
 
     if line_offset then
         local winid = fn.bufwinid(buf)
@@ -228,12 +231,19 @@ function M.read(buf, ref)
     end
 
     local parser = require '_info.parser'
-    local info_manual = parser.parse(text)
-    if not info_manual then
+    local document = parser.parse(text)
+    if not document then
         return 'fail parsing ' .. ref
     end
 
-    vim.b[buf]._info_manual = parser.as_buffer_data(info_manual)
+    local data = parser.as_buffer_data(document)
+    vim.b[buf]._info_manual = data
+
+    -- The file or node name supplied by the user may differ from the actual
+    -- names in the manual because of how `info` searches for nodes.
+    if file ~= data.file or node ~= data.node then
+        api.nvim_buf_set_name(buf, build_uri(data.file, data.node, line_offset))
+    end
 
     set_options()
 end
