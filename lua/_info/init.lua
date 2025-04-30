@@ -40,6 +40,7 @@ local function build_uri(manual, node, line)
 end
 
 ---@param uri string
+---@return string? error
 ---@return string manual
 ---@return string? node
 ---@return integer? line
@@ -47,11 +48,13 @@ local function parse_ref(uri)
     local decode = vim.uri_decode
     local route, params = unpack(split(uri, '?'))
     local line = params and params:match 'line=(%d+)' ---@type string?
-    local manual, node = route:match '^([^/]+)/([^/]+)$' ---@type string, string?
-
-    manual = decode(assert(manual, 'failed to parse URI: ' .. uri))
+    local manual, node = unpack(split(route, '/')) ---@type string, string?
+    if manual == '' then
+        return 'invalid info reference: info://' .. uri, manual, nil, nil
+    end
+    manual = decode(manual)
     node = (node ~= nil and node ~= '') and decode(node) or nil
-    return manual, node, tonumber(line)
+    return nil, manual, node, tonumber(line)
 end
 
 ---@param uri string
@@ -192,9 +195,9 @@ function M.read(buf, ref)
     vim.validate('buf', buf, 'number')
     vim.validate('ref', ref, 'string')
 
-    local file, node, line_offset = parse_ref(ref)
-    if file == '' then
-        return ('not a valid manual "%s"'):format(ref)
+    local err, file, node, line_offset = parse_ref(ref)
+    if err then
+        return err
     end
 
     local cmd = { 'info', '--output', '-', '--file', file }
