@@ -73,7 +73,10 @@ local manual_pattern = (function()
         * O(COMMA * Cgt('up', up_node))
         * SWALLOW_LINE -- Extra text (see `info --file dir`)
 
-    local reference_text = (P(1) - ':') ^ 1
+    -- NOTE:
+    -- The first character might be a colon (':') and should be considered part of the reference
+    -- label (i.e. (bash)Builtin Index), so take the first non-space character unconditionally.
+    local reference_text = (1 - S ' \t\n') * (P(1) - ':') ^ 0
     local reference_node = (P(1) - S '.,\t\n') ^ 1
     local reference = Cgt('label', Cpos(reference_text))
         * ':'
