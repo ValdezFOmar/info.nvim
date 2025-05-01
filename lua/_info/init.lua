@@ -36,7 +36,10 @@ local function build_uri(manual, node, line)
         node = 'Top'
     end
     local params = line and '?line=' .. line or ''
-    return 'info://' .. encode(manual) .. '/' .. encode(node) .. params
+    -- Info nodes' name may contain slashes ('/'),
+    -- but these are not percent encoded using the default 'rfc3986'.
+    -- example: (groff)I/O
+    return 'info://' .. encode(manual, 'rfc2396') .. '/' .. encode(node, 'rfc2396') .. params
 end
 
 ---@param uri string
