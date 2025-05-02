@@ -2,12 +2,6 @@ local map = vim.tbl_map
 
 local M = {}
 
----@enum info.Element
-local ElementType = {
-    MenuEntry = 'MenuEntry',
-    XReference = 'XReference',
-}
-
 local lpeg = vim.lpeg
 local S = lpeg.S
 local P = lpeg.P
@@ -18,6 +12,12 @@ local Cg = lpeg.Cg
 
 local START = Cg(Cp(), 'start')
 local END = Cg(Cp(), 'end_')
+
+---@enum info.Element
+local ElementType = {
+    MenuEntry = 'MenuEntry',
+    XReference = 'XReference',
+}
 
 ---@param pattern vim.lpeg.Pattern
 ---@param name string?
@@ -110,8 +110,7 @@ end)()
 ---@param text string
 ---@return string
 local function fold_spaces(text)
-    text = text:gsub('%s+', ' ')
-    return text
+    return (text:gsub('%s+', ' ')) -- Limit return to only one value
 end
 
 ---@param ref string
@@ -130,36 +129,33 @@ local function parse_reference(ref)
     return file, node
 end
 
----@class info.parser.Offset
----@field start_offset integer
----@field start_line integer
----@field end_offset integer
----@field end_line integer
-
 ---@param pos info.parser.Position
----@param offset info.parser.Offset
+---@param line info.iter_lines.Line
+---@param next_line info.iter_lines.Line
 ---@return info.TextRange
-local function calc_range(pos, offset)
+local function range_from_lines(pos, line, next_line)
+    local end_offset = pos.end_ <= line.end_ and line.start or next_line.start
     ---@type info.TextRange
     return {
-        start_row = offset.start_line,
-        start_col = pos.start - offset.start_offset,
-        end_row = offset.end_line,
-        end_col = pos.end_ - offset.end_offset - 1, -- Extra `-1` to make end-inclusive
+        start_row = line.row,
+        start_col = pos.start - line.start,
+        end_row = pos.end_ <= line.end_ and line.row or next_line.row,
+        end_col = pos.end_ - end_offset - 1, -- Extra `-1` to make end-inclusive
     }
 end
 
 ---@param rel info.parser.Header.Pair
 ---@param this_file string
----@param offset info.parser.Offset
+---@param line info.iter_lines.Line
+---@param next_line info.iter_lines.Line
 ---@return info.doc.Header.Relation
-local function build_relation(rel, this_file, offset)
+local function build_relation(rel, this_file, line, next_line)
     local file, node = parse_reference(rel.value.text)
     ---@type info.doc.Header.Relation
     return {
-        range = calc_range(rel, offset),
+        range = range_from_lines(rel, line, next_line),
         target = {
-            range = calc_range(rel.value, offset),
+            range = range_from_lines(rel.value, line, next_line),
             file = file or this_file,
             node = node or 'Top',
         },
@@ -168,9 +164,10 @@ end
 
 ---@param ref info.parser.Reference
 ---@param this_file string
----@param offset info.parser.Offset
+---@param line info.iter_lines.Line
+---@param next_line info.iter_lines.Line
 ---@return info.doc.Reference
-local function build_xref(ref, this_file, offset)
+local function build_xref(ref, this_file, line, next_line)
     local label = fold_spaces(ref.label.text)
     local file, node ---@type string?, string?
     if ref.target then
@@ -178,15 +175,56 @@ local function build_xref(ref, this_file, offset)
     else
         file, node = this_file, label
     end
-    -- TODO: maybe calculate the range for `label` and `target`
     ---@type info.doc.Reference
     return {
-        range = calc_range(ref, offset),
-        label = { text = label },
+        range = range_from_lines(ref, line, next_line),
+        label = {
+            text = label,
+            range = range_from_lines(ref.label, line, next_line),
+        },
         target = {
             file = file or this_file,
             node = node or 'Top',
             line = ref.line,
+            range = ref.target and range_from_lines(ref.target, line, next_line),
+        },
+    }
+end
+
+---@param header info.parser.Header
+---@param line info.iter_lines.Line
+---@param next_line info.iter_lines.Line
+---@return info.doc.Header
+local function build_header(header, line, next_line)
+    local file = header.file
+    local node = header.node
+    local next = header.next
+    local prev = header.prev
+    local up = header.up
+    local file_name = file.value.text
+
+    ---@type info.doc.Header
+    return {
+        meta = {
+            file = {
+                range = range_from_lines(file, line, next_line),
+                target = {
+                    range = range_from_lines(file.value, line, next_line),
+                    text = file.value.text,
+                },
+            },
+            node = {
+                range = range_from_lines(node, line, next_line),
+                target = {
+                    range = range_from_lines(node.value, line, next_line),
+                    text = node.value.text,
+                },
+            },
+        },
+        relations = {
+            next = next and build_relation(next, file_name, line, next_line),
+            prev = prev and build_relation(prev, file_name, line, next_line),
+            up = up and build_relation(up, file_name, line, next_line),
         },
     }
 end
@@ -242,69 +280,30 @@ function M.parse(text)
         return
     end
 
-    local file_name = caps.header.file.value.text
-    local menu_entries = {}
-    local xreferences = {}
     local lines = iter_lines(text)
     local line, next_line = lines()
+
+    local header = build_header(caps.header, line, next_line)
+
+    local menu_entries = {}
+    local xreferences = {}
+    local file = caps.header.file.value.text
 
     for _, el in ipairs(caps.elements) do
         while not (el.start >= line.start and el.start <= line.end_) do
             line, next_line = lines()
-            assert(line, next_line, 'no elements at the final line') -- see `iter_lines`
+            assert(line and next_line, 'no elements at the final line') -- see `iter_lines`
         end
-
-        local xref = build_xref(el, file_name, {
-            start_line = line.row,
-            start_offset = line.start,
-            end_line = el.end_ <= line.end_ and line.row or next_line.row,
-            end_offset = el.end_ <= line.end_ and line.start or next_line.start,
-        })
         if el.type == ElementType.MenuEntry then
-            table.insert(menu_entries, xref)
+            table.insert(menu_entries, build_xref(el, file, line, next_line))
         elseif el.type == ElementType.XReference then
-            table.insert(xreferences, xref)
+            table.insert(xreferences, build_xref(el, file, line, next_line))
         end
     end
 
-    local file = caps.header.file
-    local node = caps.header.node
-    local next = caps.header.next
-    local prev = caps.header.prev
-    local up = caps.header.up
-
-    local header_offset = {
-        start_line = 1,
-        start_offset = 1,
-        end_line = 1,
-        end_offset = 1,
-    }
-
     ---@type info.doc.Document
     return {
-        header = {
-            meta = {
-                file = {
-                    range = calc_range(file, header_offset),
-                    target = {
-                        range = calc_range(file.value, header_offset),
-                        text = file.value.text,
-                    },
-                },
-                node = {
-                    range = calc_range(node, header_offset),
-                    target = {
-                        range = calc_range(node.value, header_offset),
-                        text = node.value.text,
-                    },
-                },
-            },
-            relations = {
-                next = next and build_relation(next, file_name, header_offset),
-                prev = prev and build_relation(prev, file_name, header_offset),
-                up = up and build_relation(up, file_name, header_offset),
-            },
-        },
+        header = header,
         menu = {
             header = {},
             entries = menu_entries,

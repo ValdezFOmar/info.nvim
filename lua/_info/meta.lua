@@ -58,12 +58,12 @@ error 'cannot require a meta file'
 ---@field file string
 ---@field node string
 ---@field line? number
----field range? info.TextRange `nil` if a shorthand reference was used
+---@field range? info.TextRange `nil` if a shorthand reference was used
 
 ---Cross-reference pointing to a manual's node.
 ---@class info.doc.Reference
 ---@field range info.TextRange
----@field label { text: string }
+---@field label { range: info.TextRange, text: string }
 ---@field target info.doc.Reference.Target
 
 ---@class info.doc.Menu
