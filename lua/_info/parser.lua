@@ -283,23 +283,27 @@ function M.parse(text)
     ---@type info.doc.Document
     return {
         header = {
-            file = {
-                range = calc_range(file, header_offset),
-                target = {
-                    range = calc_range(file.value, header_offset),
-                    text = file.value.text,
+            meta = {
+                file = {
+                    range = calc_range(file, header_offset),
+                    target = {
+                        range = calc_range(file.value, header_offset),
+                        text = file.value.text,
+                    },
+                },
+                node = {
+                    range = calc_range(node, header_offset),
+                    target = {
+                        range = calc_range(node.value, header_offset),
+                        text = node.value.text,
+                    },
                 },
             },
-            node = {
-                range = calc_range(node, header_offset),
-                target = {
-                    range = calc_range(node.value, header_offset),
-                    text = node.value.text,
-                },
+            relations = {
+                next = next and build_relation(next, file_name, header_offset),
+                prev = prev and build_relation(prev, file_name, header_offset),
+                up = up and build_relation(up, file_name, header_offset),
             },
-            next = next and build_relation(next, file_name, header_offset),
-            prev = prev and build_relation(prev, file_name, header_offset),
-            up = up and build_relation(up, file_name, header_offset),
         },
         menu = {
             header = {},
@@ -326,13 +330,13 @@ end
 ---@param doc info.doc.Document
 ---@return info.Manual
 function M.as_buffer_data(doc)
-    local next = doc.header.next
-    local prev = doc.header.prev
-    local up = doc.header.up
+    local next = doc.header.relations.next
+    local prev = doc.header.relations.prev
+    local up = doc.header.relations.up
     ---@type info.Manual
     return {
-        file = doc.header.file.target.text,
-        node = doc.header.node.target.text,
+        file = doc.header.meta.file.target.text,
+        node = doc.header.meta.node.target.text,
         menu_entries = map(format_ref, doc.menu.entries),
         xreferences = map(format_ref, doc.references),
         relations = {

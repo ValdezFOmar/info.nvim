@@ -41,12 +41,18 @@ error 'cannot require a meta file'
 ---@field range info.TextRange
 ---@field target info.doc.Reference.Target
 
----@class info.doc.Header
+---@class info.doc.Header.Meta
 ---@field file info.doc.Header.Text
 ---@field node info.doc.Header.Text
+
+---@class info.doc.Header.Relations
 ---@field next? info.doc.Header.Relation
 ---@field prev? info.doc.Header.Relation
 ---@field up? info.doc.Header.Relation
+
+---@class info.doc.Header
+---@field meta info.doc.Header.Meta
+---@field relations info.doc.Header.Relations
 
 ---@class info.doc.Reference.Target
 ---@field file string
