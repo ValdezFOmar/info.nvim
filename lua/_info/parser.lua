@@ -169,13 +169,8 @@ end
 ---@return info.doc.Reference
 local function build_xref(ref, this_file, line, next_line)
     local label = fold_spaces(ref.label.text)
-    local file, node ---@type string?, string?
-    if ref.target then
-        file, node = parse_reference(fold_spaces(ref.target.text))
-    else
-        file, node = this_file, label
-    end
-    ---@type info.doc.Reference
+    local target = ref.target and fold_spaces(ref.target.text) or label
+    local file, node = parse_reference(target)
     return {
         range = range_from_lines(ref, line, next_line),
         label = {
