@@ -61,7 +61,7 @@ local manual_pattern = (function()
     ---@return vim.lpeg.Pattern
     local function header_key(key)
         local text = (P(1) - S ',\n\t') ^ 1
-        return START * Cgt('value', key * SP * Cpos(text)) * END
+        return START * Cgt('value', key * SP * Cpos(text)) * END * O(SP)
     end
 
     local COMMA = ',' * SP
@@ -70,12 +70,14 @@ local manual_pattern = (function()
     local next_node = header_key 'Next:'
     local prev_node = header_key 'Prev:'
     local up_node = header_key 'Up:'
+    local header_desc = START * (1 - MSP) * (1 - P '\n') ^ 1 * END
     local node_header = Cgt('file', file_name)
         * COMMA
         * Cgt('node', this_node)
         * O(COMMA * Cgt('next', next_node))
         * O(COMMA * Cgt('prev', prev_node))
         * O(COMMA * Cgt('up', up_node))
+        * O(Cgt('desc', header_desc))
         * SWALLOW_LINE -- Extra text (see `info --file dir`)
 
     -- NOTE:
@@ -247,6 +249,7 @@ end
 ---@param next_line info.iter_lines.Line
 ---@return info.doc.Header
 local function build_header(header, line, next_line)
+    local desc = header.desc
     local file = header.file
     local node = header.node
     local next = header.next
@@ -256,6 +259,7 @@ local function build_header(header, line, next_line)
 
     ---@type info.doc.Header
     return {
+        desc = desc and range_from_lines(desc, line, next_line),
         meta = {
             file = {
                 range = range_from_lines(file, line, next_line),

@@ -69,6 +69,29 @@ function M.decorate_buffer(bufnr, doc)
         hl_range(bufnr, groups.Node, rel.target.range)
     end
 
+    if doc.header.desc then
+        hl_range(bufnr, groups.Heading, doc.header.desc)
+    end
+
+    -- Conceal `File:` and `Node:` keys, mimicking `info`
+    do
+        local h = doc.header
+        local r = doc.header.relations
+        local end_col = math.min(
+            h.desc and h.desc.start_col or math.huge,
+            r.next and r.next.range.start_col or math.huge,
+            r.prev and r.prev.range.start_col or math.huge,
+            r.up and r.up.range.start_col or math.huge
+        )
+        if end_col ~= math.huge then
+            api.nvim_buf_set_extmark(bufnr, ns, 0, 0, {
+                end_row = 0,
+                end_col = end_col,
+                conceal = '',
+            })
+        end
+    end
+
     for _, heading in ipairs(doc.headings) do
         local group = groups['Heading' .. heading.level]
         if group then

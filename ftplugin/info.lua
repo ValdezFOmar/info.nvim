@@ -11,6 +11,8 @@ local win = api.nvim_get_current_win()
 vim.wo[win][0].spell = false
 vim.wo[win][0].number = false
 vim.wo[win][0].relativenumber = false
+vim.wo[win][0].conceallevel = 2
+vim.wo[win][0].concealcursor = 'nc'
 
 local info = require '_info'
 

@@ -48,7 +48,7 @@ Where:
   - [x] Headers (all levels)
   - [ ] Text enclosed in special quotes (`‘’`).
 - [ ] Highlight/stylize buffer
-    - [ ] Conceal `File` and `Node` keys in manual header like `info` does
+    - [x] Conceal `File` and `Node` keys in manual header like `info` does
     - [ ] Conceal characters
     - [ ] Virtual text for headings (extends across the screen length)
     - [x] Cross References: label / (file)node
