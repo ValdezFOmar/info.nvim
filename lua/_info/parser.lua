@@ -176,13 +176,14 @@ end
 ---@param next_line info.iter_lines.Line
 ---@return info.TextRange
 local function range_from_lines(pos, line, next_line)
-    local end_offset = pos.end_ <= line.end_ and line.start or next_line.start
+    local start_line = pos.start >= next_line.start and next_line or line
+    local end_line = pos.end_ <= line.end_ and line or next_line
     ---@type info.TextRange
     return {
-        start_row = line.row,
-        start_col = pos.start - line.start,
-        end_row = pos.end_ <= line.end_ and line.row or next_line.row,
-        end_col = pos.end_ - end_offset - 1, -- Extra `-1` to make end-inclusive
+        start_row = start_line.row,
+        start_col = pos.start - start_line.start,
+        end_row = end_line.row,
+        end_col = pos.end_ - end_line.start - 1, -- Extra `-1` to make end-inclusive
     }
 end
 
