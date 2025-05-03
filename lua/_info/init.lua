@@ -12,9 +12,9 @@ local M = {}
 ---@param group info.colors.Group
 ---@param range info.TextRange
 local function hl_range(bufnr, group, range)
-    api.nvim_buf_set_extmark(bufnr, ns, range.start_row - 1, range.start_col, {
-        end_row = range.end_row - 1,
-        end_col = range.end_col + 1,
+    api.nvim_buf_set_extmark(bufnr, ns, range.start_row, range.start_col, {
+        end_row = range.end_row,
+        end_col = range.end_col,
         hl_group = group,
     })
 end
@@ -48,7 +48,7 @@ local function highlight_buffer(bufnr, doc)
         hl_range(bufnr, groups.Heading, doc.menu.header.range)
     end
     for _, entry in ipairs(doc.menu.entries) do
-        local row = entry.range.start_row - 1
+        local row = entry.range.start_row
         local col = entry.range.start_col
         api.nvim_buf_set_extmark(bufnr, ns, row, col, {
             end_row = row,
@@ -143,31 +143,31 @@ local function open_uri(uri, mods)
     end
 end
 
----@param row integer
----@param col integer
+---@param row integer 0-indexed
+---@param col integer 0-indexed
 ---@param range info.TextRange
 ---@return boolean
 local function in_range(row, col, range)
     if row >= range.start_row and row <= range.end_row then
         if range.start_row == range.end_row then
-            return col >= range.start_col and col <= range.end_col
+            return col >= range.start_col and col < range.end_col
         elseif row == range.start_row then
             return col >= range.start_col
         elseif row == range.end_row then
-            return col <= range.end_col
+            return col < range.end_col
         else
             return true -- cursor is in the middle of the start and end line, so is always in range
         end
     end
-
     return false
 end
 
 ---@param mods table
 function M.follow(mods)
     local manual = vim.b._info_manual ---@type info.Manual
-    local row, col = unpack(api.nvim_win_get_cursor(0))
-    local line_text = api.nvim_buf_get_lines(0, row - 1, row, false)[1]
+    local pos = api.nvim_win_get_cursor(0)
+    local row, col = pos[1] - 1, pos[2]
+    local line_text = api.nvim_buf_get_lines(0, row, row + 1, true)[1]
 
     local xref ---@type info.Manual.XRef?
     --- check if current line is a menu entry
@@ -294,7 +294,7 @@ function M.read(buf, ref)
     vim.bo.modifiable = true
     vim.bo.readonly = false
     vim.bo.swapfile = false
-    api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+    api.nvim_buf_set_lines(buf, 0, -1, true, lines)
     -- don't allow further changes in case parsing fails
     vim.bo.modifiable = false
     vim.bo.readonly = true

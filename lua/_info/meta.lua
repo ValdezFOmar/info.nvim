@@ -20,7 +20,7 @@ error 'cannot require a meta file'
 ---@class info.parser.Reference : info.parser.Element
 ---@field label info.parser.TextPosition
 ---@field target? info.parser.TextPosition
----@field line? integer
+---@field line? integer 1-indexed
 
 ---@class info.parser.Header
 ---@field file info.parser.Header.Pair
@@ -62,7 +62,7 @@ error 'cannot require a meta file'
 ---@class info.doc.Reference.Target
 ---@field file string
 ---@field node string
----@field line? number
+---@field line? number 1-indexed
 ---@field range? info.TextRange `nil` if a shorthand reference was used
 
 ---Cross-reference pointing to a manual's node.
@@ -101,13 +101,16 @@ error 'cannot require a meta file'
 ---
 
 ---Position of a piece of text in a buffer.
----The format of `(start,end)_row` and `(start,end)_col` make it seamless to test if the cursor
----is contained withing the text using the returned value of `nvim_win_get_cursor()`.
----The range is end-inclusive to make is easier to use in Lua and with the extmarks API.
+---The format of `(start,end)_row` and `(start,end)_col` is 0-indexed,
+---end-inclusive for rows, but end-exclusive for columns.
+---
+---> [!NOTE]
+---> The format is the exact same as `nvim_buf_set_extmark()`,
+---> so there's no need to do further adjustments when setting an extmark.
 ---@class info.TextRange
----@field start_row integer 1-indexed
+---@field start_row integer 0-indexed
 ---@field start_col integer 0-indexed
----@field end_row integer 1-indexed
+---@field end_row integer 0-indexed
 ---@field end_col integer 0-indexed
 
 ---@class info.Manual.Node
@@ -119,7 +122,7 @@ error 'cannot require a meta file'
 ---@field label string
 ---@field file string
 ---@field node string
----@field line? number
+---@field line? number 1-indexed
 
 ---@class info.Manual.Relations
 ---@field next? info.Manual.Node

@@ -190,12 +190,13 @@ end
 local function range_from_lines(pos, line, next_line)
     local start_line = pos.start >= next_line.start and next_line or line
     local end_line = pos.end_ <= line.end_ and line or next_line
+    -- `pos` is 1-indexed but the range needs to be 0-indexed
     ---@type info.TextRange
     return {
         start_row = start_line.row,
-        start_col = pos.start - start_line.start,
+        start_col = pos.start - start_line.start - 1,
         end_row = end_line.row,
-        end_col = pos.end_ - end_line.start - 1, -- Extra `-1` to make end-inclusive
+        end_col = pos.end_ - end_line.start - 1,
     }
 end
 
@@ -290,17 +291,17 @@ end
 ---@return fun(): info.iter_lines.Line, info.iter_lines.Line
 local function iter_lines(text)
     local line_ends = text:gmatch '()\n'
-    local row = 1
+    local row = 0
     local line = {
         row = row,
-        start = 1,
+        start = 0,
         end_ = line_ends() --[[@as integer]],
     }
 
     local yielded_extra_line = false
     return function()
         row = row + 1
-        local start = line.end_ + 1
+        local start = line.end_
         local end_ = line_ends() --[[@as integer]]
         if not end_ then
             if not yielded_extra_line then
