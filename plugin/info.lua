@@ -3,8 +3,8 @@ if vim.g.loaded_info ~= nil then
 end
 vim.g.loaded_info = true
 
-local colors = require '_info.colors'
-colors.set_groups()
+local hl = require '_info.hl'
+hl.set_groups()
 
 local autocmd = vim.api.nvim_create_autocmd
 local augroup = vim.api.nvim_create_augroup
@@ -34,6 +34,6 @@ autocmd('BufReadCmd', {
 autocmd('ColorScheme', {
     group = group,
     callback = function()
-        colors.set_groups()
+        hl.set_groups()
     end,
 })
