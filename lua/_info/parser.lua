@@ -22,6 +22,7 @@ local ElementType = {
     FootNoteHeading = 'FootNoteHeading',
     InlineURI = 'InlineURI',
 }
+M.ElementType = ElementType
 
 ---@param pattern vim.lpeg.Pattern
 ---@param name string?

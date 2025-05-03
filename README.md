@@ -30,24 +30,31 @@ Where:
 - [x] Support `node` as a command argument: `:Info coreutils ls`
 - [x] Support `dir` entries
 - [x] Commands for navigating to relative nodes (prev, next, up)
+- [ ] Set buffer commands
+  - [ ] Show cross-references
+  - [ ] Show menu entries
 - [ ] Set up buffer keymaps
   - [x] `K`: go to node under cursor
   - [x] `gp`: go 'prev'
   - [x] `gn`: go 'next'
   - [x] `gu`: go 'up'
-  - [ ] `gO`: show menu entries
-  - [ ] Key map for showing all cross-references
+  - [ ] `gO`: show various symbols
+    - Headings
+    - Menu entries
+    - Cross-references
+    - Footnotes
 - [ ] Parsing
   - [x] Line positions for cross-references
-  - [ ] Headers (all levels)
+  - [x] Headers (all levels)
   - [ ] Text enclosed in special quotes (`‘’`).
 - [ ] Highlight/stylize buffer
-    - [ ] Strip `File` and `Node` keys in manual header like `info` does
-    - [ ] Conceal characters: Don't enable by default
-    - [ ] Cross References: label / (file)node
-    - [ ] Footnotes: Header
-    - [ ] Headings (all levels)
-    - [ ] Menu entries and Menu header
+    - [ ] Conceal `File` and `Node` keys in manual header like `info` does
+    - [ ] Conceal characters
+    - [ ] Virtual text for headings (extends across the screen length)
+    - [x] Cross References: label / (file)node
+    - [x] Footnotes: Header
+    - [x] Headings (all levels)
+    - [x] Menu entries and Menu header
 
 ### Backlog
 
