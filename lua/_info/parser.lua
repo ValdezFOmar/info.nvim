@@ -15,8 +15,11 @@ local END = Cg(Cp(), 'end_')
 
 ---@enum info.Element
 local ElementType = {
+    Heading = 'Heading',
     MenuEntry = 'MenuEntry',
+    MenuHeader = 'MenuHeader',
     XReference = 'XReference',
+    FootNoteHeading = 'FootNoteHeading',
 }
 
 ---@param pattern vim.lpeg.Pattern
@@ -82,12 +85,18 @@ local manual_pattern = (function()
         * ':'
         * (':' + SP * Cgt('target', Cpos(reference_node)) * O(S '.,'))
 
+    local menu_header = Ctype(ElementType.MenuHeader)
+        * B '\n'
+        * START
+        * '* Menu:'
+        * END
+        * SWALLOW_LINE -- Menu description
+
     local line_offset = P '(line' * SP * Cg(lpeg.R '09' ^ 1 / tonumber, 'line') * ')'
     local menu_entry = Ctype(ElementType.MenuEntry)
         * B '\n' -- menu entries only appear at the start of lines
         * START
         * '* '
-        * -#P 'Menu:' -- this is not an entry, but the header for the input
         * reference
         * END
         * O(O '\n' * SP * line_offset) -- line offset may appear in the next line
@@ -102,7 +111,40 @@ local manual_pattern = (function()
         * reference
         * END
 
-    local line = Ct(menu_entry) + Ct(inline_reference) + 1
+    local footnote_heading = Ctype(ElementType.FootNoteHeading)
+        * B '\n   ' -- Footnotes headings seem to always appear at exactly 3 spaces from the start of the line
+        * START
+        * P '-' ^ 1
+        * SP
+        * 'Footnotes'
+        * SP
+        * P '-' ^ 1
+        * END
+        * SWALLOW_LINE
+
+    ---Capture a manual heading
+    ---@param level integer
+    ---@param char string
+    ---@return vim.lpeg.Pattern
+    local function heading(level, char)
+        return Ctype(ElementType.Heading)
+            * Cg(lpeg.Cc(level), 'level')
+            * B '\n'
+            * START
+            * P(char) ^ 1
+            * END
+            * '\n'
+    end
+
+    local line = Ct(heading(1, '*'))
+        + Ct(heading(2, '='))
+        + Ct(heading(3, '-'))
+        + Ct(heading(4, '.'))
+        + Ct(footnote_heading)
+        + Ct(menu_header)
+        + Ct(menu_entry)
+        + Ct(inline_reference)
+        + 1
 
     return Ct(Cgt('header', node_header) * Cgt('elements', line ^ 0) * -1)
 end)()
@@ -280,8 +322,11 @@ function M.parse(text)
 
     local header = build_header(caps.header, line, next_line)
 
-    local menu_entries = {}
-    local xreferences = {}
+    local footnote_heading ---@type { range: info.TextRange }?
+    local menu_header ---@type { range: info.TextRange }?
+    local menu_entries = {} ---@type info.doc.Reference[]
+    local xreferences = {} ---@type info.doc.Reference[]
+    local headings = {} ---@type info.doc.Heading[]
     local file = caps.header.file.value.text
 
     for _, el in ipairs(caps.elements) do
@@ -289,21 +334,42 @@ function M.parse(text)
             line, next_line = lines()
             assert(line and next_line, 'no elements at the final line') -- see `iter_lines`
         end
-        if el.type == ElementType.MenuEntry then
-            table.insert(menu_entries, build_xref(el, file, line, next_line))
+        if el.type == ElementType.MenuHeader then
+            menu_header = menu_header or { range = range_from_lines(el, line, next_line) }
+        elseif el.type == ElementType.FootNoteHeading then
+            footnote_heading = footnote_heading or { range = range_from_lines(el, line, next_line) }
+        elseif el.type == ElementType.MenuEntry then
+            local xref = el --[[@as info.parser.Reference]]
+            menu_entries[#menu_entries + 1] = build_xref(xref, file, line, next_line)
         elseif el.type == ElementType.XReference then
-            table.insert(xreferences, build_xref(el, file, line, next_line))
+            local xref = el --[[@as info.parser.Reference]]
+            xreferences[#xreferences + 1] = build_xref(xref, file, line, next_line)
+        elseif el.type == ElementType.Heading then
+            local heading = el --[[@as info.parser.Heading]]
+            local range = range_from_lines(heading, line, next_line)
+            headings[#headings + 1] = {
+                level = heading.level,
+                range = {
+                    -- Capture the previous line as it contains the heading text
+                    start_row = range.start_row - 1,
+                    start_col = 0,
+                    end_col = range.end_col,
+                    end_row = range.end_row,
+                },
+            }
         end
     end
 
     ---@type info.doc.Document
     return {
         header = header,
+        headings = headings,
         menu = {
-            header = {},
+            header = menu_header,
             entries = menu_entries,
         },
         references = xreferences,
+        footnotes = footnote_heading and { heading = footnote_heading },
     }
 end
 
