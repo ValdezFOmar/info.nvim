@@ -20,6 +20,7 @@ local ElementType = {
     MenuHeader = 'MenuHeader',
     XReference = 'XReference',
     FootNoteHeading = 'FootNoteHeading',
+    InlineURI = 'InlineURI',
 }
 
 ---@param pattern vim.lpeg.Pattern
@@ -122,6 +123,15 @@ local manual_pattern = (function()
         * END
         * SWALLOW_LINE
 
+    local inline_uri = Ctype(ElementType.InlineURI)
+        * START
+        * '<http'
+        * O 's'
+        * '://'
+        * (P(1) - S ' >\n') ^ 1
+        * '>'
+        * END
+
     ---Capture a manual heading
     ---@param level integer
     ---@param char string
@@ -144,6 +154,7 @@ local manual_pattern = (function()
         + Ct(menu_header)
         + Ct(menu_entry)
         + Ct(inline_reference)
+        + Ct(inline_uri)
         + 1
 
     return Ct(Cgt('header', node_header) * Cgt('elements', line ^ 0) * -1)
@@ -328,6 +339,7 @@ function M.parse(text)
     local menu_entries = {} ---@type info.doc.Reference[]
     local xreferences = {} ---@type info.doc.Reference[]
     local headings = {} ---@type info.doc.Heading[]
+    local misc = {} ---@type info.doc.Element[]
     local file = caps.header.file.value.text
 
     for _, el in ipairs(caps.elements) do
@@ -358,6 +370,11 @@ function M.parse(text)
                     end_row = range.end_row,
                 },
             }
+        elseif el.type == ElementType.InlineURI then
+            misc[#misc + 1] = {
+                type = el.type,
+                range = range_from_lines(el, line, next_line),
+            }
         end
     end
 
@@ -371,6 +388,7 @@ function M.parse(text)
         },
         references = xreferences,
         footnotes = footnote_heading and { heading = footnote_heading },
+        misc = misc,
     }
 end
 

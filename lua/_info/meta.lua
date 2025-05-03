@@ -82,6 +82,10 @@ error 'cannot require a meta file'
 ---@field level 1|2|3|4
 ---@field range info.TextRange
 
+---@class info.doc.Element
+---@field type info.Element
+---@field range info.TextRange
+
 ---All data necessary to highlight, render and navigate an Info manual.
 ---Elements' position is adjusted to rows/columns.
 ---@class info.doc.Document
@@ -90,6 +94,7 @@ error 'cannot require a meta file'
 ---@field menu info.doc.Menu
 ---@field references info.doc.Reference[]
 ---@field footnotes? info.doc.Footnotes
+---@field misc info.doc.Element[] Miscellaneous elements that only contain type and range information
 
 ---
 --- Final manual data stored in `vim.b._info_manual`
