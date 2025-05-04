@@ -51,6 +51,25 @@ local function hl_range(bufnr, group, range)
     })
 end
 
+---Style common cross-reference elements (i.e. inline references and menu entries).
+---@param bufnr integer
+---@param ref info.doc.Reference
+local function style_reference(bufnr, ref)
+    hl_range(bufnr, groups.ReferenceLabel, ref.label.range)
+    if ref.target.range then
+        hl_range(bufnr, groups.ReferenceTarget, ref.target.range)
+    else
+        ---Conceal `::` for shorthand references.
+        local start_row = ref.range.end_row
+        local start_col = ref.label.range.end_col
+        api.nvim_buf_set_extmark(bufnr, ns, start_row, start_col, {
+            end_row = start_row,
+            end_col = start_col + 2,
+            conceal = '',
+        })
+    end
+end
+
 ---@param bufnr integer
 ---@param doc info.doc.Document
 function M.decorate_buffer(bufnr, doc)
@@ -114,16 +133,20 @@ function M.decorate_buffer(bufnr, doc)
             end_col = col + 1,
             hl_group = groups.ListMarker,
         })
-        hl_range(bufnr, groups.ReferenceLabel, entry.label.range)
-        if entry.target.range then
-            hl_range(bufnr, groups.ReferenceTarget, entry.target.range)
-        end
+        style_reference(bufnr, entry)
     end
-    for _, reference in ipairs(doc.references) do
-        hl_range(bufnr, groups.ReferenceLabel, reference.label.range)
-        if reference.target.range then
-            hl_range(bufnr, groups.ReferenceTarget, reference.target.range)
-        end
+    for _, ref in ipairs(doc.references) do
+        -- Conceal '*Note' annotations.
+        -- If the label starts at the same row as '*Note' starts,
+        -- then there is an extra single space ' ' that should be counted
+        -- Example: '*Note Definitions::'
+        local col_offset = ref.range.start_row == ref.label.range.start_row and 6 or 5
+        api.nvim_buf_set_extmark(bufnr, ns, ref.range.start_row, ref.range.start_col, {
+            end_row = ref.range.start_row,
+            end_col = ref.range.start_col + col_offset,
+            conceal = '',
+        })
+        style_reference(bufnr, ref)
     end
     if doc.footnotes then
         hl_range(bufnr, groups.Heading, doc.footnotes.heading.range)
