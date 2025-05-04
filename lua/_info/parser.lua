@@ -126,14 +126,12 @@ local manual_pattern = (function()
         * END
         * SWALLOW_LINE
 
-    local inline_uri = Ctype(ElementType.InlineURI)
-        * START
-        * '<http'
-        * O 's'
-        * '://'
-        * (P(1) - S ' >\n') ^ 1
-        * '>'
-        * END
+    local uri = (P 'https' + 'http' + 'ftp') * '://' * (P(1) - S ' <>\n') ^ 1
+
+    local email_char = (P(1) - S ' <>\n@') ^ 1
+    local email = email_char * '@' * email_char
+
+    local inline_uri = Ctype(ElementType.InlineURI) * START * '<' * (uri + email) * '>' * END
 
     ---Capture a manual heading
     ---@param level integer
