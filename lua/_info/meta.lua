@@ -15,6 +15,7 @@ error 'cannot require a meta file'
 ---@field type info.Element
 
 ---@class info.parser.Heading : info.parser.Element
+---@field char string
 ---@field level 1|2|3|4
 
 ---@class info.parser.Reference : info.parser.Element
@@ -81,6 +82,7 @@ error 'cannot require a meta file'
 ---@field heading { range: info.TextRange }
 
 ---@class info.doc.Heading
+---@field char string
 ---@field level 1|2|3|4
 ---@field range info.TextRange
 

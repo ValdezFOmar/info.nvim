@@ -93,9 +93,14 @@ function M.decorate_buffer(bufnr, doc)
     end
 
     for _, heading in ipairs(doc.headings) do
-        local group = groups['Heading' .. heading.level]
+        local group = groups['Heading' .. heading.level] ---@type info.hl.Group?
         if group then
             hl_range(bufnr, group, heading.range)
+            api.nvim_buf_set_extmark(bufnr, ns, heading.range.end_row, 0, {
+                virt_text_pos = 'overlay',
+                virt_text_hide = true,
+                virt_text = { { heading.char:rep(80), group } }, -- Info pages are justified to 80 characters or less
+            })
         end
     end
     if doc.menu.header then

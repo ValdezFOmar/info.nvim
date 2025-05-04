@@ -142,6 +142,7 @@ local manual_pattern = (function()
     local function heading(level, char)
         return Ctype(ElementType.Heading)
             * Cg(lpeg.Cc(level), 'level')
+            * Cg(lpeg.Cc(char), 'char')
             * B '\n'
             * START
             * P(char) ^ 1
@@ -367,6 +368,7 @@ function M.parse(text)
             local heading = el --[[@as info.parser.Heading]]
             local range = range_from_lines(heading, line, next_line)
             headings[#headings + 1] = {
+                char = heading.char,
                 level = heading.level,
                 range = {
                     -- Capture the previous line as it contains the heading text
