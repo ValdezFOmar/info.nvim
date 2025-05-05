@@ -83,11 +83,11 @@ local manual_pattern = (function()
     -- NOTE:
     -- The first character might be a colon (':') and should be considered part of the reference
     -- label (i.e. (bash)Builtin Index), so take the first non-space character unconditionally.
-    local reference_text = (1 - S ' \t\n') * (P(1) - ':') ^ 0
-    local reference_node = (P(1) - S '.,\t\n') ^ 1
-    local reference = Cgt('label', Cpos(reference_text))
+    local reference_label = (1 - S ' \t\n') * (P(1) - ':') ^ 0
+    local reference_target = (P(1) - S '.,\t') ^ 1
+    local reference = Cgt('label', Cpos(reference_label))
         * ':'
-        * (':' + SP * Cgt('target', Cpos(reference_node)) * O(S '.,'))
+        * (':' + SP * Cgt('target', Cpos(reference_target)) * O(S '.,'))
 
     local menu_header = Ctype(ElementType.MenuHeader)
         * B '\n'
