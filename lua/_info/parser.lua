@@ -21,6 +21,7 @@ local ElementType = {
     XReference = 'XReference',
     FootNoteHeading = 'FootNoteHeading',
     InlineURI = 'InlineURI',
+    InlineSample = 'InlineSample',
 }
 M.ElementType = ElementType
 
@@ -99,7 +100,6 @@ local manual_pattern = (function()
         * reference
         * END
         * O(O '\n' * SP * line_offset) -- line offset may appear in the next line
-        * SWALLOW_LINE -- entry description / comment
 
     local inline_reference = Ctype(ElementType.XReference)
         * START
@@ -109,6 +109,26 @@ local manual_pattern = (function()
         * MSP -- reference can continue the next line
         * reference
         * END
+
+    local single_quote_sample = Ctype(ElementType.InlineSample)
+        * B(S ' \t\n/(') -- Prevent matching apostrophes
+        * Cg(lpeg.Cc "'", 'quote')
+        * START
+        * "'"
+        * (1 - S "' \t\n") -- More prevention towards false positives
+        * (1 - P "'") ^ 0
+        * "'"
+        * END
+
+    local special_quote_sample = Ctype(ElementType.InlineSample)
+        * Cg(lpeg.Cc '‘', 'quote')
+        * START
+        * '‘'
+        * (1 - (P '‘' + '’')) ^ 1
+        * '’'
+        * END
+
+    local inline_sample = special_quote_sample + single_quote_sample
 
     local footnote_heading = Ctype(ElementType.FootNoteHeading)
         * B '\n   ' -- Footnotes headings seem to always appear at exactly 3 spaces from the start of the line
@@ -152,6 +172,7 @@ local manual_pattern = (function()
         + Ct(menu_entry)
         + Ct(inline_reference)
         + Ct(inline_uri)
+        + Ct(inline_sample)
         + 1
 
     return Ct(Cgt('header', node_header) * Cgt('elements', line ^ 0) * -1)
@@ -339,6 +360,7 @@ function M.parse(text)
     local menu_entries = {} ---@type info.doc.Reference[]
     local xreferences = {} ---@type info.doc.Reference[]
     local headings = {} ---@type info.doc.Heading[]
+    local samples = {} ---@type info.doc.Sample[]
     local misc = {} ---@type info.doc.Element[]
     local file = caps.header.file.value.text
 
@@ -376,6 +398,13 @@ function M.parse(text)
                 type = el.type,
                 range = range_from_lines(el, line, next_line),
             }
+        elseif el.type == ElementType.InlineSample then
+            ---@cast el info.parser.Sample
+            samples[#samples + 1] = {
+                type = el.type,
+                quote = el.quote,
+                range = range_from_lines(el, line, next_line),
+            }
         end
     end
 
@@ -389,6 +418,7 @@ function M.parse(text)
         },
         references = xreferences,
         footnotes = footnote_heading and { heading = footnote_heading },
+        samples = samples,
         misc = misc,
     }
 end

@@ -46,15 +46,9 @@ Where:
 - [ ] Parsing
   - [x] Line positions for cross-references
   - [x] Headers (all levels)
-  - [ ] Text enclosed in special quotes (`‘’`).
-- [ ] Highlight/stylize buffer
-    - [x] Conceal `File` and `Node` keys in manual header like `info` does
-    - [ ] Conceal characters
-    - [ ] Virtual text for headings (extends across the screen length)
-    - [x] Cross References: label / (file)node
-    - [x] Footnotes: Header
-    - [x] Headings (all levels)
-    - [x] Menu entries and Menu header
+  - [x] Text enclosed in special quotes (`‘’` and `'`), highlighted as
+     raw text/inline code.
+  - [ ] Emphasized text (between `_` characters).
 
 ### Backlog
 

@@ -8,6 +8,7 @@ local groups = {
     URI = 'InfoUri',
     File = 'InfoFile',
     Node = 'InfoNode',
+    Sample = 'InfoSample',
     Heading = 'InfoHeading',
     Heading1 = 'InfoHeading1',
     Heading2 = 'InfoHeading2',
@@ -30,6 +31,7 @@ local colors = {
     [groups.Heading3] = '@markup.heading.3',
     [groups.Heading4] = '@markup.heading.4',
     [groups.ListMarker] = '@markup.list',
+    [groups.Sample] = '@markup.raw',
     [groups.ReferenceLabel] = '@markup.link.label',
     [groups.ReferenceTarget] = '@markup.link',
 }
@@ -151,6 +153,23 @@ function M.decorate_buffer(bufnr, doc)
     if doc.footnotes then
         hl_range(bufnr, groups.Heading, doc.footnotes.heading.range)
     end
+
+    for _, sample in ipairs(doc.samples) do
+        hl_range(bufnr, groups.Sample, sample.range)
+        local r = sample.range
+        local offset = #sample.quote
+        api.nvim_buf_set_extmark(bufnr, ns, r.start_row, r.start_col, {
+            end_row = r.start_row,
+            end_col = r.start_col + offset,
+            conceal = '',
+        })
+        api.nvim_buf_set_extmark(bufnr, ns, r.end_row, r.end_col - offset, {
+            end_row = r.end_row,
+            end_col = r.end_col,
+            conceal = '',
+        })
+    end
+
     for _, element in ipairs(doc.misc) do
         if element.type == ElementType.InlineURI then
             hl_range(bufnr, groups.URI, element.range)

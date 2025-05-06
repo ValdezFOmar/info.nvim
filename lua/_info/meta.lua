@@ -14,6 +14,9 @@ error 'cannot require a meta file'
 ---@class info.parser.Element : info.parser.Position
 ---@field type info.Element
 
+---@class info.parser.Sample : info.parser.Element
+---@field quote string
+
 ---@class info.parser.Heading : info.parser.Element
 ---@field char string
 ---@field level 1|2|3|4
@@ -90,6 +93,9 @@ error 'cannot require a meta file'
 ---@field type info.Element
 ---@field range info.TextRange
 
+---@class info.doc.Sample : info.doc.Element
+---@field quote string
+
 ---All data necessary to highlight, render and navigate an Info manual.
 ---Elements' position is adjusted to rows/columns.
 ---@class info.doc.Document
@@ -98,6 +104,7 @@ error 'cannot require a meta file'
 ---@field menu info.doc.Menu
 ---@field references info.doc.Reference[]
 ---@field footnotes? info.doc.Footnotes
+---@field samples info.doc.Sample[]
 ---@field misc info.doc.Element[] Miscellaneous elements that only contain type and range information
 
 ---
