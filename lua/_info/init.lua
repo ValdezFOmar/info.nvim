@@ -210,9 +210,9 @@ function M.read(buf, ref)
     end
 
     local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
-    if res.code ~= 0 then
-        local message = res.stderr and res.stderr:match ':%s*([^:]+)$' or ''
-        return ('no manual found for "%s": %s'):format(ref, trim(message))
+    if res.code ~= 0 or not res.stdout or res.stdout == '' then
+        local msg = res.stderr and res.stderr:match ':%s*([^:]+)$'
+        return 'no manual found for ' .. ref .. (msg and ': ' .. msg or '')
     end
     local text = assert(res.stdout)
     local lines = split(text, '\n')
