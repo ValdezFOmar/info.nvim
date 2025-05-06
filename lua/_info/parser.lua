@@ -89,12 +89,7 @@ local manual_pattern = (function()
         * ':'
         * (':' + SP * Cgt('target', Cpos(reference_target)) * O(S '.,'))
 
-    local menu_header = Ctype(ElementType.MenuHeader)
-        * B '\n'
-        * START
-        * '* Menu:'
-        * END
-        * SWALLOW_LINE -- Menu description
+    local menu_header = Ctype(ElementType.MenuHeader) * B '\n' * START * '* Menu:' * END * '\n'
 
     local line_offset = P '(line' * SP * Cg(lpeg.R '09' ^ 1 / tonumber, 'line') * ')'
     local menu_entry = Ctype(ElementType.MenuEntry)
