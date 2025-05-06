@@ -32,6 +32,10 @@ command(0, 'InfoFollow', function(p)
     info.follow(p.smods)
 end, {})
 
+command(0, 'InfoMenu', function()
+    info.menu()
+end, { desc = 'Show menu entries' })
+
 map('n', 'q', '<C-w>c', { desc = 'Close info window', buffer = true })
 map('n', 'K', '<cmd>InfoFollow<CR>', { desc = 'Follow node reference under cursor', buffer = true })
 map('n', 'gn', '<cmd>InfoNext<CR>', { desc = 'Go to the next node', buffer = true })

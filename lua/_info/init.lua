@@ -143,6 +143,30 @@ function M.goto_node(key, mods)
     open_uri(uri, mods)
 end
 
+---@class info.MenuItem
+---@field lnum integer
+---@field text string
+---@field filename string
+
+function M.menu()
+    local manual = vim.b._info_manual ---@type info.Manual?
+    if not manual or #manual.menu_entries == 0 then
+        vim.notify('info.lua: No menu entries for this node', vim.log.levels.ERROR)
+        return
+    end
+    local items = {} ---@type info.MenuItem[]
+    for _, entry in ipairs(manual.menu_entries) do
+        items[#items + 1] = {
+            text = entry.label,
+            lnum = entry.line or 1,
+            filename = build_uri(entry.file, entry.node, entry.line),
+        }
+    end
+    fn.setloclist(0, items, ' ')
+    fn.setloclist(0, {}, 'a', { title = 'Menu' })
+    vim.cmd.lopen()
+end
+
 local function set_options()
     vim.bo.bufhidden = 'unload'
     vim.bo.buftype = 'nofile'
@@ -233,7 +257,9 @@ function M.read(buf, ref)
     if line_offset then
         local winid = fn.bufwinid(buf)
         local row = math.min(line_offset, api.nvim_buf_line_count(buf))
-        api.nvim_win_set_cursor(winid, { row, 0 })
+        vim.schedule(function()
+            api.nvim_win_set_cursor(winid, { row, 0 })
+        end)
     end
 
     local parser = require '_info.parser'
