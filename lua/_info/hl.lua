@@ -10,6 +10,7 @@ local groups = {
     Node = 'InfoNode',
     Sample = 'InfoSample',
     Strong = 'InfoStrong',
+    Keycode = 'InfoKeycode',
     Heading = 'InfoHeading',
     Heading1 = 'InfoHeading1',
     Heading2 = 'InfoHeading2',
@@ -34,6 +35,7 @@ local colors = {
     [groups.Heading4] = '@markup.heading.4',
     [groups.ListMarker] = '@markup.list',
     [groups.Strong] = '@markup.strong',
+    [groups.Keycode] = '@string.special',
     [groups.Emphasis] = '@markup.italic',
     [groups.Sample] = '@markup.raw',
     [groups.ReferenceLabel] = '@markup.link.label',
@@ -190,6 +192,8 @@ function M.decorate_buffer(bufnr, doc)
         elseif element.type == ElementType.Strong then
             hl_range(bufnr, groups.Strong, element.range)
             conceal_delimiters(bufnr, element.range)
+        elseif element.type == ElementType.Keycode then
+            hl_range(bufnr, groups.Keycode, element.range)
         end
     end
 end

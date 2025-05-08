@@ -25,6 +25,7 @@ local ElementType = {
     InlineSample = 'InlineSample',
     Strong = 'Strong',
     Emphasis = 'Emphasis',
+    Keycode = 'Keycode',
 }
 M.ElementType = ElementType
 
@@ -132,6 +133,12 @@ local manual_pattern = (function()
         * END
 
     local inline_sample = special_quote_sample + single_quote_sample
+    local keycode = Ctype(ElementType.Keycode)
+        * START
+        * '<'
+        * (lpeg.R('az', 'AZ') + '-') ^ 1
+        * '>'
+        * END
 
     local emphasis_boundary = loc.alnum + '_'
     local emphasis = Ctype(ElementType.Emphasis)
@@ -195,6 +202,7 @@ local manual_pattern = (function()
         + Ct(menu_entry)
         + Ct(inline_reference)
         + Ct(inline_uri)
+        + Ct(keycode)
         + Ct(inline_sample)
         + Ct(emphasis)
         + Ct(strong)
@@ -422,6 +430,7 @@ function M.parse(text)
             el.type == ElementType.InlineURI
             or el.type == ElementType.Emphasis
             or el.type == ElementType.Strong
+            or el.type == ElementType.Keycode
         then
             misc[#misc + 1] = {
                 type = el.type,
