@@ -10,6 +10,7 @@ local Cp = lpeg.Cp
 local Ct = lpeg.Ct
 local Cg = lpeg.Cg
 
+local loc = lpeg.locale()
 local START = Cg(Cp(), 'start')
 local END = Cg(Cp(), 'end_')
 
@@ -22,6 +23,8 @@ local ElementType = {
     FootNoteHeading = 'FootNoteHeading',
     InlineURI = 'InlineURI',
     InlineSample = 'InlineSample',
+    Strong = 'Strong',
+    Emphasis = 'Emphasis',
 }
 M.ElementType = ElementType
 
@@ -130,6 +133,26 @@ local manual_pattern = (function()
 
     local inline_sample = special_quote_sample + single_quote_sample
 
+    local emphasis_boundary = loc.alnum + '_'
+    local emphasis = Ctype(ElementType.Emphasis)
+        * -B(emphasis_boundary)
+        * START
+        * '_'
+        * (1 - S '_\n') ^ 1
+        * '_'
+        * END
+        * -#emphasis_boundary
+
+    local strong_boundary = loc.alnum + '*'
+    local strong = Ctype(ElementType.Strong)
+        * -B(strong_boundary)
+        * START
+        * '*'
+        * (1 - S '*\n') ^ 1
+        * '*'
+        * END
+        * -#strong_boundary
+
     local footnote_heading = Ctype(ElementType.FootNoteHeading)
         * B '\n   ' -- Footnotes headings seem to always appear at exactly 3 spaces from the start of the line
         * START
@@ -173,6 +196,8 @@ local manual_pattern = (function()
         + Ct(inline_reference)
         + Ct(inline_uri)
         + Ct(inline_sample)
+        + Ct(emphasis)
+        + Ct(strong)
         + 1
 
     return Ct(Cgt('header', node_header) * Cgt('elements', line ^ 0) * -1)
@@ -393,7 +418,11 @@ function M.parse(text)
                     end_row = range.end_row,
                 },
             }
-        elseif el.type == ElementType.InlineURI then
+        elseif
+            el.type == ElementType.InlineURI
+            or el.type == ElementType.Emphasis
+            or el.type == ElementType.Strong
+        then
             misc[#misc + 1] = {
                 type = el.type,
                 range = range_from_lines(el, line, next_line),
@@ -405,6 +434,8 @@ function M.parse(text)
                 quote = el.quote,
                 range = range_from_lines(el, line, next_line),
             }
+        else
+            error('unhandled element: ' .. vim.inspect(el))
         end
     end
 

@@ -9,11 +9,13 @@ local groups = {
     File = 'InfoFile',
     Node = 'InfoNode',
     Sample = 'InfoSample',
+    Strong = 'InfoStrong',
     Heading = 'InfoHeading',
     Heading1 = 'InfoHeading1',
     Heading2 = 'InfoHeading2',
     Heading3 = 'InfoHeading3',
     Heading4 = 'InfoHeading4',
+    Emphasis = 'InfoEmphasis',
     ListMarker = 'InfoListMarker',
     ReferenceLabel = 'InfoReferenceLabel',
     ReferenceTarget = 'InfoReferenceTarget',
@@ -31,6 +33,8 @@ local colors = {
     [groups.Heading3] = '@markup.heading.3',
     [groups.Heading4] = '@markup.heading.4',
     [groups.ListMarker] = '@markup.list',
+    [groups.Strong] = '@markup.strong',
+    [groups.Emphasis] = '@markup.italic',
     [groups.Sample] = '@markup.raw',
     [groups.ReferenceLabel] = '@markup.link.label',
     [groups.ReferenceTarget] = '@markup.link',
@@ -50,6 +54,23 @@ local function hl_range(bufnr, group, range)
         end_row = range.end_row,
         end_col = range.end_col,
         hl_group = group,
+    })
+end
+
+---@param bufnr integer
+---@param range info.TextRange
+---@param offset integer?
+local function conceal_delimiters(bufnr, range, offset)
+    offset = offset or 1
+    api.nvim_buf_set_extmark(bufnr, ns, range.start_row, range.start_col, {
+        end_row = range.start_row,
+        end_col = range.start_col + offset,
+        conceal = '',
+    })
+    api.nvim_buf_set_extmark(bufnr, ns, range.end_row, range.end_col - offset, {
+        end_row = range.end_row,
+        end_col = range.end_col,
+        conceal = '',
     })
 end
 
@@ -156,23 +177,19 @@ function M.decorate_buffer(bufnr, doc)
 
     for _, sample in ipairs(doc.samples) do
         hl_range(bufnr, groups.Sample, sample.range)
-        local r = sample.range
-        local offset = #sample.quote
-        api.nvim_buf_set_extmark(bufnr, ns, r.start_row, r.start_col, {
-            end_row = r.start_row,
-            end_col = r.start_col + offset,
-            conceal = '',
-        })
-        api.nvim_buf_set_extmark(bufnr, ns, r.end_row, r.end_col - offset, {
-            end_row = r.end_row,
-            end_col = r.end_col,
-            conceal = '',
-        })
+        conceal_delimiters(bufnr, sample.range, #sample.quote)
     end
 
     for _, element in ipairs(doc.misc) do
         if element.type == ElementType.InlineURI then
             hl_range(bufnr, groups.URI, element.range)
+            conceal_delimiters(bufnr, element.range)
+        elseif element.type == ElementType.Emphasis then
+            hl_range(bufnr, groups.Emphasis, element.range)
+            conceal_delimiters(bufnr, element.range)
+        elseif element.type == ElementType.Strong then
+            hl_range(bufnr, groups.Strong, element.range)
+            conceal_delimiters(bufnr, element.range)
         end
     end
 end
