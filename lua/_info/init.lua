@@ -208,7 +208,7 @@ function M.open(args, mods)
         end
 
         local name = assert(vim.fs.basename(path):match '^([^.]+)') ---@type string
-        uri = build_uri(name, args[2])
+        uri = build_uri(name, #args == 1 and args[1] or args[2])
     else
         return 'too many arguments (max: 2): ' .. vim.inspect(args)
     end
