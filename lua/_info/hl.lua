@@ -76,7 +76,7 @@ local function conceal_delimiters(bufnr, range, offset)
     })
 end
 
----Style common cross-reference elements (i.e. inline references and menu entries).
+---Style common cross-reference elements (e.g. inline references and menu entries).
 ---@param bufnr integer
 ---@param ref info.doc.Reference
 local function style_reference(bufnr, ref)

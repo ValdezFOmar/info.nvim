@@ -2,67 +2,76 @@
 
 Read [`Info`][info] manuals inside Neovim.
 
-## dependencies
+## Dependencies
 
 - GNU [`info`][info-cli] command-line tool. Version 7.x is recommended.
 
-## `info` URIs
+## Usage and Features
 
-Example:
+### Editor commands
+
+Use `:Info` to open an info manual:
+
+- `:Info`: opens the top level `dir` menu (like `$ info`)
+- `:Info topic`: open the menu entry in `dir` that matches `topic` (like
+  `$ info topic`)
+- `Info file node`: open the manual for `node` in the file `file` (like
+  `$ info --file file --node node`)
+
+Examples:
+
+```vim
+:Info " Open '(dir)Top'
+:Info bash " Open '(bash)Top'
+:Info ls "Open '(coreutils)ls invocation'
+:Info gzip Adavanced\ Usage " Open '(gzip)Adavanced Usage', note that spaces need to be escaped
+```
+
+Additionally, there's some buffer-local commands available in Info
+buffers:
+
+- `:InfoNext`: Go to the next node pointed by the current node.
+- `:InfoPrev`: Go to the previous node pointed by the current node.
+- `:InfoUp`: Go up one level, as pointed by the current node.
+- `:InfoFollow`: Follow the cross-reference under the cursor, if there's any.
+- `:InfoMenu`: Open the `location-list` with all menu entries in the node.
+  Selecting a item will open the that menu entry as an Info buffer.
+
+### Default Keymaps
+
+- `q`: Close Info window
+- `K`: execute `:InfoFollow`
+- `gn`: execute `:InfoNext`
+- `gp`: execute `:InfoPrev`
+- `gu`: execute `:InfoUp`
+
+All keymaps are local to Info buffers.
+
+### `info` URIs
+
+An Info buffer's name follows the following URI-like scheme:
 
 ```
-info://file.info/node?line=15
+info://file/node?line=15
 ```
 
 Where:
-- `file.info` is the name of the file/manual
-- `/node` is the specific node visited (if the node is omitted then
-  default to `Top`)
-- Supports `line` as a query parameter (jump to this line in the node).
 
+- `file`: file name
+- `node` (optional): node name (default to `Top`)
+- `line` (optional): 1-indexed line number to jump to. Is the only query
+  parameter supported.
 
-## TODO
+The `file` and `node` parts are percent encoded to avoid conflicts with
+reserved characters (e.g. `:Info groff I/O` opens `info://groff.info/I%2fO`)
 
-- [ ] Docs
-  - [ ] Usage/Commands/Keymaps
-  - [ ] `info-nvim.txt`
-  - [ ] Differences with [info.vim]
-- [x] Support `node` as a command argument: `:Info coreutils ls`
-- [x] Support `dir` entries
-- [x] Commands for navigating to relative nodes (prev, next, up)
-- [ ] Set buffer commands
-  - [ ] Show cross-references
-  - [ ] Show menu entries
-- [ ] Set up buffer keymaps
-  - [x] `K`: go to node under cursor
-  - [x] `gp`: go 'prev'
-  - [x] `gn`: go 'next'
-  - [x] `gu`: go 'up'
-  - [ ] `gO`: show various symbols
-    - Headings
-    - Menu entries
-    - Cross-references
-    - Footnotes
-- [ ] Parsing
-  - [x] Line positions for cross-references
-  - [x] Headers (all levels)
-  - [x] Text enclosed in special quotes (`‘’` and `'`), highlighted as
-     raw text/inline code.
-  - [ ] Emphasized text (between `_` characters).
+### health
 
-### Backlog
+Run some simple environment checks (`:h health`).
 
-Parse the main `dir` index (`info --file dir`) and create a mapping for
-all the menu entries. This can help to:
-
-- Provide completions for the `:Info` editor command.
-- Better resolution for topics (`:Info dir` and `:Info info` give
-  different results compared to `info dir` and `info info`)
-
-## Developing/Testing
-
-Use `info`'s `--debug=3` flag to get more output about the how `info`
-finds Info manuals (see `info --usage info`).
+```vim
+checkhealth info
+```
 
 ## References
 
