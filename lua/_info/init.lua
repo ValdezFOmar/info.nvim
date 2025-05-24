@@ -74,6 +74,31 @@ local function open_uri(uri, mods)
     end
 end
 
+---@param file string
+---@param node string?
+---@return string? text
+local function get_file_text(file, node)
+    -- NOTE: Sometimes `info` can't find a node using the `--node` flag,
+    -- but it can without it. Try different fallbacks until one succeeds,
+    -- or all fail.
+    local commands ---@type string[][]
+    if node then
+        commands = {
+            { 'info', '--output', '-', '--file', file, '--node', node },
+            { 'info', '--output', '-', '--file', file, node },
+            { 'info', '--output', '-', file, node },
+        }
+    else
+        commands = { { 'info', '--ouput', '-', '--file', file } }
+    end
+    for _, cmd in ipairs(commands) do
+        local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
+        if res.code == 0 and res.stdout and res.stdout ~= '' then
+            return res.stdout
+        end
+    end
+end
+
 ---@param row integer 0-indexed
 ---@param col integer 0-indexed
 ---@param range info.TextRange
@@ -124,6 +149,12 @@ function M.follow(mods)
         vim.notify('info.lua: no cross-reference under cursor', vim.log.levels.ERROR)
         return
     end
+
+    if not get_file_text(xref.file, xref.node) then
+        vim.notify('info.lua: no manual found for ' .. xref.label, vim.log.levels.ERROR)
+        return
+    end
+
     local uri = build_uri(xref.file, xref.node, xref.line)
     open_uri(uri, mods)
 end
@@ -213,31 +244,6 @@ function M.open(args, mods)
         return 'too many arguments (max: 2): ' .. vim.inspect(args)
     end
     open_uri(uri, mods)
-end
-
----@param file string
----@param node string?
----@return string? text
-local function get_file_text(file, node)
-    -- NOTE: Sometimes `info` can't find a node using the `--node` flag,
-    -- but it can without it. Try different fallbacks until one succeeds,
-    -- or all fail.
-    local commands ---@type string[][]
-    if node then
-        commands = {
-            { 'info', '--output', '-', '--file', file, '--node', node },
-            { 'info', '--output', '-', '--file', file, node },
-            { 'info', '--output', '-', file, node },
-        }
-    else
-        commands = { { 'info', '--ouput', '-', '--file', file } }
-    end
-    for _, cmd in ipairs(commands) do
-        local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
-        if res.code == 0 and res.stdout and res.stdout ~= '' then
-            return res.stdout
-        end
-    end
 end
 
 ---@param buf integer
