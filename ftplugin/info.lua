@@ -13,6 +13,7 @@ vim.wo[win][0].number = false
 vim.wo[win][0].relativenumber = false
 vim.wo[win][0].conceallevel = 2
 vim.wo[win][0].concealcursor = 'nc'
+vim.wo[win][0].list = false
 
 local info = require '_info'
 
