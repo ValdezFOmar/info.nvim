@@ -1,44 +1,37 @@
-local api = vim.api
-local map = vim.keymap.set
-local command = api.nvim_buf_create_user_command
-
 vim.bo.expandtab = false
 vim.bo.shiftwidth = 8
 vim.bo.softtabstop = 8
 vim.bo.tabstop = 8
 
-local win = api.nvim_get_current_win()
-vim.wo[win][0].spell = false
-vim.wo[win][0].number = false
-vim.wo[win][0].relativenumber = false
-vim.wo[win][0].conceallevel = 2
-vim.wo[win][0].concealcursor = 'nc'
-vim.wo[win][0].list = false
+vim.wo[0][0].spell = false
+vim.wo[0][0].number = false
+vim.wo[0][0].relativenumber = false
+vim.wo[0][0].conceallevel = 2
+vim.wo[0][0].concealcursor = 'nc'
+vim.wo[0][0].list = false
 
-local info = require '_info'
-
-command(0, 'InfoNext', function(p)
-    info.goto_node('Next', p.smods)
-end, {})
-
-command(0, 'InfoPrev', function(p)
-    info.goto_node('Prev', p.smods)
-end, {})
-
-command(0, 'InfoUp', function(p)
-    info.goto_node('Up', p.smods)
-end, {})
-
-command(0, 'InfoFollow', function(p)
-    info.follow(p.smods)
-end, {})
-
-command(0, 'InfoMenu', function()
-    info.menu()
+vim.api.nvim_buf_create_user_command(0, 'InfoMenu', function()
+    require('info.buf').menu()
 end, { desc = 'Show menu entries' })
 
-map('n', 'q', '<C-w>c', { desc = 'Close info window', buffer = true })
-map('n', 'K', '<cmd>InfoFollow<CR>', { desc = 'Follow node reference under cursor', buffer = true })
-map('n', 'gn', '<cmd>InfoNext<CR>', { desc = 'Go to the next node', buffer = true })
-map('n', 'gp', '<cmd>InfoPrev<CR>', { desc = 'Go to the previous node', buffer = true })
-map('n', 'gu', '<cmd>InfoUp<CR>', { desc = 'Go up one level', buffer = true })
+vim.keymap.set('n', '<Plug>(info-follow)', function()
+    require('info.buf').follow()
+end, { buf = 0, desc = 'Follow node reference under cursor' })
+
+vim.keymap.set('n', '<Plug>(info-next)', function()
+    require('info.buf').goto_node 'Next'
+end, { buf = 0, desc = 'Go to the next node' })
+
+vim.keymap.set('n', '<Plug>(info-prev)', function()
+    require('info.buf').goto_node 'Prev'
+end, { buf = 0, desc = 'Go to the previous node' })
+
+vim.keymap.set('n', '<Plug>(info-up)', function()
+    require('info.buf').goto_node 'Up'
+end, { buf = 0, desc = 'Go up one level' })
+
+vim.keymap.set('n', 'K', '<Plug>(info-follow)', { buf = 0 })
+vim.keymap.set('n', 'gn', '<Plug>(info-next)', { buf = 0 })
+vim.keymap.set('n', 'gp', '<Plug>(info-prev)', { buf = 0 })
+vim.keymap.set('n', 'gu', '<Plug>(info-up)', { buf = 0 })
+vim.keymap.set('n', 'q', '<C-w>c', { buf = 0 })

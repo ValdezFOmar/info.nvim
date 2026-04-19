@@ -1,5 +1,3 @@
-local map = vim.tbl_map
-
 local M = {}
 
 local lpeg = vim.lpeg
@@ -241,7 +239,6 @@ local function range_from_lines(pos, line, next_line)
     local start_line = pos.start >= next_line.start and next_line or line
     local end_line = pos.end_ <= line.end_ and line or next_line
     -- `pos` is 1-indexed but the range needs to be 0-indexed
-    ---@type info.TextRange
     return {
         start_row = start_line.row,
         start_col = pos.start - start_line.start - 1,
@@ -257,7 +254,6 @@ end
 ---@return info.doc.Header.Relation
 local function build_relation(rel, this_file, line, next_line)
     local file, node = parse_reference(rel.value.text)
-    ---@type info.doc.Header.Relation
     return {
         range = range_from_lines(rel, line, next_line),
         target = {
@@ -305,7 +301,6 @@ local function build_header(header, line, next_line)
     local up = header.up
     local file_name = file.value.text
 
-    ---@type info.doc.Header
     return {
         desc = desc and range_from_lines(desc, line, next_line),
         meta = {
@@ -448,7 +443,6 @@ function M.parse(text)
         end
     end
 
-    ---@type info.doc.Document
     return {
         header = header,
         headings = headings,
@@ -466,7 +460,6 @@ end
 ---@param ref info.doc.Reference
 ---@return info.Manual.XRef
 local function format_ref(ref)
-    ---@type info.Manual.XRef
     return {
         range = ref.range,
         label = ref.label.text,
@@ -483,12 +476,12 @@ function M.as_buffer_data(doc)
     local next = doc.header.relations.next
     local prev = doc.header.relations.prev
     local up = doc.header.relations.up
-    ---@type info.Manual
+
     return {
         file = doc.header.meta.file.target.text,
         node = doc.header.meta.node.target.text,
-        menu_entries = map(format_ref, doc.menu.entries),
-        xreferences = map(format_ref, doc.references),
+        menu_entries = vim.tbl_map(format_ref, doc.menu.entries),
+        xreferences = vim.tbl_map(format_ref, doc.references),
         relations = {
             next = next and {
                 file = next.target.file,

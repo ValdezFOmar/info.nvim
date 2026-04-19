@@ -3,7 +3,7 @@ if vim.g.loaded_info ~= nil then
 end
 vim.g.loaded_info = true
 
-local hl = require '_info.hl'
+local hl = require 'info.hl'
 hl.set_groups()
 
 local autocmd = vim.api.nvim_create_autocmd
@@ -12,8 +12,9 @@ local command = vim.api.nvim_create_user_command
 
 local group = augroup('info.nvim', {})
 
+-- TODO: Implement `:Info!` (with a bang) similar to `:help!` and assign to `keywordprg`
 command('Info', function(params)
-    local err = require('_info').open(params.fargs, params.smods)
+    local err = require('info.buf').open(params.fargs, params.smods)
     if err then
         vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
     end
@@ -23,7 +24,7 @@ autocmd('BufReadCmd', {
     group = group,
     pattern = 'info://*',
     callback = function(ev)
-        local err = require('_info').read(ev.buf, assert(ev.match:match '^info://(.*)$'))
+        local err = require('info.buf').read(ev.buf, assert(ev.match:match '^info://(.*)$'))
         if err then
             vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
             return

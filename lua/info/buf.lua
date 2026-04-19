@@ -50,20 +50,20 @@ end
 local function parse_ref(uri)
     local decode = vim.uri_decode
     local route, params = unpack(split(uri, '?'))
-    local line = params and params:match 'line=(%d+)' ---@type string?
+    local line = tonumber(params and params:match 'line=(%d+)') --[[@as integer]]
     local manual, node = unpack(split(route, '/')) ---@type string, string?
     if manual == '' then
         return 'invalid info reference: info://' .. uri, manual, nil, nil
     end
     manual = decode(manual)
     node = (node ~= nil and node ~= '') and decode(node) or nil
-    return nil, manual, node, tonumber(line)
+    return nil, manual, node, line
 end
 
 ---@param uri string
----@param mods table
+---@param mods table?
 local function open_uri(uri, mods)
-    mods = mods or {}
+    mods = mods or { tab = -1 } -- open in the same window by default
     mods.silent = true
     local exargs = { fn.fnameescape(uri), mods = mods }
 
@@ -118,8 +118,7 @@ local function in_range(row, col, range)
     return false
 end
 
----@param mods table
-function M.follow(mods)
+function M.follow()
     local manual = vim.b._info_manual ---@type info.Manual
     local pos = api.nvim_win_get_cursor(0)
     local row, col = pos[1] - 1, pos[2]
@@ -155,23 +154,18 @@ function M.follow(mods)
         return
     end
 
-    local uri = build_uri(xref.file, xref.node, xref.line)
-    open_uri(uri, mods)
+    open_uri(build_uri(xref.file, xref.node, xref.line))
 end
 
 ---@param key 'Prev'|'Next'|'Up'
----@param mods table
-function M.goto_node(key, mods)
+function M.goto_node(key)
     local manual = vim.b._info_manual ---@type info.Manual
     local node = manual.relations[key:lower()] ---@type info.Manual.Node?
-    if not node then
-        return vim.notify(
-            "info.lua: no '" .. key .. "' pointer for this node",
-            vim.log.levels.ERROR
-        )
+    if node then
+        open_uri(build_uri(node.file, node.node))
+    else
+        vim.notify(('info.lua: no %q pointer for this node'):format(key), vim.log.levels.ERROR)
     end
-    local uri = build_uri(node.file, node.node)
-    open_uri(uri, mods)
 end
 
 ---@class info.MenuItem
@@ -285,7 +279,7 @@ function M.read(buf, ref)
         end)
     end
 
-    local parser = require '_info.parser'
+    local parser = require 'info.parser'
     local document = parser.parse(text)
     if not document then
         return 'fail parsing ' .. ref
@@ -300,7 +294,7 @@ function M.read(buf, ref)
         api.nvim_buf_set_name(buf, build_uri(data.file, data.node, line_offset))
     end
 
-    require('_info.hl').decorate_buffer(buf, document)
+    require('info.hl').decorate_buffer(buf, document)
     set_options()
 end
 

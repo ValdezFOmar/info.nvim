@@ -98,7 +98,7 @@ end
 ---@param bufnr integer
 ---@param doc info.doc.Document
 function M.decorate_buffer(bufnr, doc)
-    local ElementType = require('_info.parser').ElementType
+    local ElementType = require('info.parser').ElementType
 
     local file = doc.header.meta.file
     local node = doc.header.meta.node
@@ -130,7 +130,7 @@ function M.decorate_buffer(bufnr, doc)
         if end_col ~= math.huge then
             api.nvim_buf_set_extmark(bufnr, ns, 0, 0, {
                 end_row = 0,
-                end_col = end_col,
+                end_col = end_col --[[@as integer]],
                 conceal = '',
             })
         end

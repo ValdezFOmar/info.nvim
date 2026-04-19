@@ -1,5 +1,9 @@
 ## TODO
 
+- [x] Move code back to `lua/info` and move the code inside `init.lua`
+   to a difference module.
+   `init.lua` should only contain the "public interface" and only expose
+   functions that can be used by users.
 - [ ] Docs
   - [ ] Usage/Commands/Keymaps
   - [ ] `info-nvim.txt`
@@ -7,9 +11,9 @@
 - [x] Support `node` as a command argument: `:Info coreutils ls`
 - [x] Support `dir` entries
 - [x] Commands for navigating to relative nodes (prev, next, up)
-- [ ] Set buffer commands
-  - [ ] Show cross-references
-  - [x] Show menu entries
+- [ ] ~Set buffer commands~ Don't add buffer commands for now
+  - [ ] ~Show cross-references~ Just include them in `gO`
+  - [ ] ~Show menu entries~ Just include them in `gO`
 - [ ] Set up buffer keymaps
   - [x] `K`: go to node under cursor
   - [x] `gp`: go 'prev'
@@ -20,9 +24,10 @@
     - Menu entries
     - Cross-references
     - Footnotes
-- [ ] Parse code blocks.
 
 ### Backlog
+
+Parse code blocks, need to figure out a way to do that.
 
 Parse the main `dir` index (`info --file dir`) and create a map for
 all the menu entries. This can help to:

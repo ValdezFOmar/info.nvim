@@ -68,7 +68,7 @@ error 'cannot require a meta file'
 ---@class info.doc.Reference.Target
 ---@field file string
 ---@field node string
----@field line? number 1-indexed
+---@field line? integer 1-indexed
 ---@field range? info.TextRange `nil` if a shorthand reference was used
 
 ---Cross-reference pointing to a manual's node.
@@ -133,7 +133,7 @@ error 'cannot require a meta file'
 ---@field label string
 ---@field file string
 ---@field node string
----@field line? number 1-indexed
+---@field line? integer 1-indexed
 
 ---@class info.Manual.Relations
 ---@field next? info.Manual.Node
