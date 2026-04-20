@@ -24,7 +24,7 @@ local groups = {
 M.groups = groups
 
 ---@type table<info.hl.Group, string>
-local colors = {
+local group_to_link = {
     [groups.URI] = '@markup.link.url',
     [groups.File] = '@string.special.path',
     [groups.Node] = '@markup.link',
@@ -43,7 +43,7 @@ local colors = {
 }
 
 function M.set_groups()
-    for name, link in pairs(colors) do
+    for name, link in pairs(group_to_link) do
         api.nvim_set_hl(0, name, { link = link, default = true })
     end
 end

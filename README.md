@@ -13,10 +13,8 @@ Read [`Info`][info] manuals inside Neovim.
 Use `:Info` to open an info manual:
 
 - `:Info`: opens the top level `dir` menu (like `$ info`)
-- `:Info topic`: open the menu entry in `dir` that matches `topic` (like
-  `$ info topic`)
-- `Info file node`: open the manual for `node` in the file `file` (like
-  `$ info --file file --node node`)
+- `:Info topic`: open the menu entry in `dir` that matches `topic` (like `$ info topic`)
+- `:Info file node`: open the manual for `node` in the file `file` (like `$ info --file file --node node`)
 
 Examples:
 
@@ -25,25 +23,16 @@ Examples:
 :Info bash " Open '(bash)Top'
 :Info ls "Open '(coreutils)ls invocation'
 :Info gzip Adavanced\ Usage " Open '(gzip)Adavanced Usage', note that spaces need to be escaped
+:Info! " Open the page for the reference/word under the cursor
 ```
-
-Additionally, there's some buffer-local commands available in Info
-buffers:
-
-- `:InfoNext`: Go to the next node pointed by the current node.
-- `:InfoPrev`: Go to the previous node pointed by the current node.
-- `:InfoUp`: Go up one level, as pointed by the current node.
-- `:InfoFollow`: Follow the cross-reference under the cursor, if there's any.
-- `:InfoMenu`: Open the `location-list` with all menu entries in the node.
-  Selecting a item will open the that menu entry as an Info buffer.
 
 ### Default Keymaps
 
-- `q`: Close Info window
-- `K`: execute `:InfoFollow`
-- `gn`: execute `:InfoNext`
-- `gp`: execute `:InfoPrev`
-- `gu`: execute `:InfoUp`
+- `q`: Close window
+- `K`: Open the page for the reference/word under the cursor
+- `gn`/`<Plug>(info-next-node)`: Go to page pointed by `Next`
+- `gp`/`<Plug>(info-prev-node)`: Go to page pointed by `Prev`
+- `gu`/`<Plug>(info-up-node)`: Go to page pointed by `Up`
 
 All keymaps are local to Info buffers.
 
@@ -67,7 +56,7 @@ reserved characters (e.g. `:Info groff I/O` opens `info://groff.info/I%2fO`)
 
 ### health
 
-Run some simple environment checks (`:h health`).
+Run system checks (`:h health`).
 
 ```vim
 checkhealth info

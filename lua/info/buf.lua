@@ -118,43 +118,33 @@ local function in_range(row, col, range)
     return false
 end
 
-function M.follow()
-    local manual = vim.b._info_manual ---@type info.Manual
+---Get the current reference under the cursor, if any.
+---@nodiscard
+---@return info.Manual.XRef?
+local function get_reference()
+    local manual = vim.b._info_manual ---@type info.Manual?
+    if not manual then
+        return
+    end
+
     local pos = api.nvim_win_get_cursor(0)
     local row, col = pos[1] - 1, pos[2]
     local line_text = api.nvim_buf_get_lines(0, row, row + 1, true)[1]
 
-    local xref ---@type info.Manual.XRef?
-    --- check if current line is a menu entry
+    --- Menu entries always start with `* `
     if vim.startswith(line_text, '* ') then
         for _, entry in ipairs(manual.menu_entries) do
             if in_range(row, col, entry.range) then
-                xref = entry
-                break
+                return entry
             end
         end
     end
 
-    if not xref then
-        for _, entry in ipairs(manual.xreferences) do
-            if in_range(row, col, entry.range) then
-                xref = entry
-                break
-            end
+    for _, xref in ipairs(manual.xreferences) do
+        if in_range(row, col, xref.range) then
+            return xref
         end
     end
-
-    if not xref then
-        vim.notify('info.lua: no cross-reference under cursor', vim.log.levels.ERROR)
-        return
-    end
-
-    if not get_file_text(xref.file, xref.node) then
-        vim.notify('info.lua: no manual found for ' .. xref.label, vim.log.levels.ERROR)
-        return
-    end
-
-    open_uri(build_uri(xref.file, xref.node, xref.line))
 end
 
 ---@param key 'Prev'|'Next'|'Up'
@@ -164,7 +154,7 @@ function M.goto_node(key)
     if node then
         open_uri(build_uri(node.file, node.node))
     else
-        vim.notify(('info.lua: no %q pointer for this node'):format(key), vim.log.levels.ERROR)
+        vim.notify(('info.nvim: no %q pointer for this node'):format(key), vim.log.levels.ERROR)
     end
 end
 
@@ -173,10 +163,11 @@ end
 ---@field text string
 ---@field filename string
 
-function M.menu()
+-- TODO: Include all symbols that would fit into gO
+function M.toc()
     local manual = vim.b._info_manual ---@type info.Manual?
     if not manual or #manual.menu_entries == 0 then
-        vim.notify('info.lua: No menu entries for this node', vim.log.levels.ERROR)
+        vim.notify('info.nvim: No menu entries for this node', vim.log.levels.ERROR)
         return
     end
     local items = {} ---@type info.MenuItem[]
@@ -202,8 +193,24 @@ local function set_options()
     vim.bo.swapfile = false
 end
 
+---Open the reference under the cursor
+---@param mods table
+---@nodiscard
+---@return string? err
+function M.open_reference(mods)
+    if vim.bo.filetype ~= 'info' then
+        return M.open({ vim.fn.expand '<cword>' }, mods)
+    end
+    local ref = get_reference()
+    if not ref then
+        return 'no reference under cursor'
+    end
+    open_uri(build_uri(ref.file, ref.node, ref.line), mods)
+end
+
 ---@param args [string?, string?]
 ---@param mods table<string, any>
+---@nodiscard
 ---@return string? err
 function M.open(args, mods)
     vim.validate('args', args, 'table')

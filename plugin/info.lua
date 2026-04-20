@@ -3,24 +3,23 @@ if vim.g.loaded_info ~= nil then
 end
 vim.g.loaded_info = true
 
-local hl = require 'info.hl'
-hl.set_groups()
+local api = vim.api
+local group = api.nvim_create_augroup('info.nvim', {})
 
-local autocmd = vim.api.nvim_create_autocmd
-local augroup = vim.api.nvim_create_augroup
-local command = vim.api.nvim_create_user_command
-
-local group = augroup('info.nvim', {})
-
--- TODO: Implement `:Info!` (with a bang) similar to `:help!` and assign to `keywordprg`
-command('Info', function(params)
-    local err = require('info.buf').open(params.fargs, params.smods)
+api.nvim_create_user_command('Info', function(params)
+    local info = require 'info.buf'
+    local err ---@type string?
+    if params.bang then
+        err = info.open_reference(params.smods)
+    else
+        err = info.open(params.fargs, params.smods)
+    end
     if err then
         vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
     end
-end, { nargs = '*' })
+end, { nargs = '*', bang = true })
 
-autocmd('BufReadCmd', {
+api.nvim_create_autocmd('BufReadCmd', {
     group = group,
     pattern = 'info://*',
     callback = function(ev)
@@ -32,7 +31,10 @@ autocmd('BufReadCmd', {
     end,
 })
 
-autocmd('ColorScheme', {
+local hl = require 'info.hl'
+hl.set_groups()
+
+api.nvim_create_autocmd('ColorScheme', {
     group = group,
     callback = function()
         hl.set_groups()
