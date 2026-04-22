@@ -25,8 +25,9 @@ api.nvim_create_autocmd('BufReadCmd', {
     callback = function(ev)
         local err = require('info.buf').read(ev.buf, assert(ev.match:match '^info://(.*)$'))
         if err then
-            vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
-            return
+            vim.schedule(function()
+                vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
+            end)
         end
     end,
 })

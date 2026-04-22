@@ -78,7 +78,7 @@ end
 ---@param node string?
 ---@return string? text
 local function get_file_text(file, node)
-    -- NOTE: Sometimes `info` can't find a node using the `--node` flag,
+    -- Sometimes `info` can't find a node using the `--node` flag,
     -- but it can without it. Try different fallbacks until one succeeds,
     -- or all fail.
     local commands ---@type string[][]
@@ -149,12 +149,12 @@ end
 
 ---@param key 'Prev'|'Next'|'Up'
 function M.goto_node(key)
-    local manual = vim.b._info_manual ---@type info.Manual
-    local node = manual.relations[key:lower()] ---@type info.Manual.Node?
+    local manual = vim.b._info_manual ---@type info.Manual?
+    local node = manual and manual.relations[key:lower()] ---@type info.Manual.Node?
     if node then
         open_uri(build_uri(node.file, node.node))
     else
-        vim.notify(('info.nvim: no %q pointer for this node'):format(key), vim.log.levels.ERROR)
+        vim.notify(('info.nvim: no %q pointer for this node'):format(key))
     end
 end
 
@@ -220,23 +220,24 @@ function M.open(args, mods)
     if #args == 0 then
         uri = build_uri 'dir'
     elseif #args == 1 or #args == 2 then
-        local cmd
+        local cmd ---@type string[]
         if #args == 1 then
-            cmd = { 'info', '--location', args[1] }
+            cmd = { 'info', '--all', '--where', args[1] }
         else
-            cmd = { 'info', '--location', '--file', args[1], '--node', args[2] }
+            cmd = { 'info', '--all', '--where', '--file', args[1], '--node', args[2] }
         end
         local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
         if res.code ~= 0 then
             return ('command error `%s`: %s'):format(vim.inspect(cmd), res.stderr or '')
         end
 
-        local path = trim(res.stdout or '')
+        local path = assert(split(res.stdout, '\n')[1])
 
         if path == '' then
             return ('no manual found for "%s"'):format(table.concat(args, ' '))
         elseif path == '*manpages*' then
-            return ('manpage available for "%s"'):format(table.concat(args, ' '))
+            vim.cmd.Man { args[1], mods = mods }
+            return
         end
 
         local name = assert(vim.fs.basename(path):match '^([^.]+)') ---@type string
@@ -288,20 +289,19 @@ function M.read(buf, ref)
 
     local parser = require 'info.parser'
     local document = parser.parse(text)
-    if not document then
-        return 'fail parsing ' .. ref
+    if document then
+        local data = parser.as_buffer_data(document)
+        vim.b[buf]._info_manual = data
+
+        -- The file or node name supplied by the user may differ from the actual
+        -- names in the manual because of how `info` searches for nodes.
+        if file ~= data.file or node ~= data.node then
+            api.nvim_buf_set_name(buf, build_uri(data.file, data.node, line_offset))
+        end
+
+        require('info.hl').decorate_buffer(buf, document)
     end
 
-    local data = parser.as_buffer_data(document)
-    vim.b[buf]._info_manual = data
-
-    -- The file or node name supplied by the user may differ from the actual
-    -- names in the manual because of how `info` searches for nodes.
-    if file ~= data.file or node ~= data.node then
-        api.nvim_buf_set_name(buf, build_uri(data.file, data.node, line_offset))
-    end
-
-    require('info.hl').decorate_buffer(buf, document)
     set_options()
 end
 
