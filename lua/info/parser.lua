@@ -479,7 +479,9 @@ function M.as_buffer_data(doc)
     local headings = vim.tbl_map(function(heading)
         return heading.range
     end, doc.headings)
-    table.insert(headings, doc.menu.header.range)
+    if doc.menu.header then
+        table.insert(headings, doc.menu.header.range)
+    end
 
     return {
         file = doc.header.meta.file.target.text,
