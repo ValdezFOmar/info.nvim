@@ -1,6 +1,5 @@
 local fn = vim.fn
 local api = vim.api
-local trim = vim.trim
 local split = vim.split
 
 local TIMEOUT = 10000
@@ -158,39 +157,87 @@ function M.goto_node(key)
     end
 end
 
----@class info.MenuItem
----@field lnum integer
----@field text string
----@field filename string
-
--- TODO: Include all symbols that would fit into gO
 function M.toc()
     local manual = vim.b._info_manual ---@type info.Manual?
-    if not manual or #manual.menu_entries == 0 then
-        vim.notify('info.nvim: No menu entries for this node', vim.log.levels.ERROR)
+    if not manual then
+        vim.notify 'info.nvim: no contents found'
         return
     end
-    local items = {} ---@type info.MenuItem[]
-    for _, entry in ipairs(manual.menu_entries) do
+
+    local buf = api.nvim_get_current_buf()
+    local bufname = api.nvim_buf_get_name(buf)
+    local items = {} ---@type vim.quickfix.entry[]
+
+    for _, range in ipairs(manual.headings) do
         items[#items + 1] = {
-            text = entry.label,
-            lnum = entry.line or 1,
-            filename = build_uri(entry.file, entry.node, entry.line),
+            text = api.nvim_buf_get_lines(buf, range.start_row, range.end_row + 1, true)[1],
+            col = range.start_col + 1,
+            lnum = range.start_row + 1,
+            filename = bufname,
         }
     end
+    for _, entry in ipairs(manual.menu_entries) do
+        items[#items + 1] = {
+            text = entry.label.text,
+            vcol = 0,
+            -- Place cursor at the start of the label, skipping `* `.
+            col = entry.label.range.start_col + 1,
+            lnum = entry.label.range.start_row + 1,
+            filename = bufname,
+        }
+    end
+    for _, xref in ipairs(manual.xreferences) do
+        items[#items + 1] = {
+            text = xref.label.text,
+            vcol = 0,
+            -- Place cursor at the start of the label, skipping `*Note`.
+            -- See 'Info sed Command-Line\ Options' for an example.
+            col = xref.label.range.start_col + 1,
+            lnum = xref.label.range.start_row + 1,
+            filename = bufname,
+        }
+    end
+    if manual.footnotes then
+        local range = manual.footnotes.heading.range
+        items[#items + 1] = {
+            text = api.nvim_buf_get_lines(buf, range.start_row, range.end_row + 1, true)[1],
+            vcol = 0,
+            col = range.start_col + 1,
+            lnum = range.start_row + 1,
+            filename = bufname,
+        }
+    end
+
+    if #items == 0 then
+        vim.notify 'info.nvim: no contents found'
+        return
+    end
+
+    table.sort(items, function(a, b)
+        if a.lnum == b.lnum then
+            return a.col < b.col
+        else
+            return a.lnum < b.lnum
+        end
+    end)
+
     fn.setloclist(0, items, ' ')
-    fn.setloclist(0, {}, 'a', { title = 'Menu' })
+    fn.setloclist(0, {}, 'a', { title = 'Table of contents' })
     vim.cmd.lopen()
+    vim.w.qf_toc = bufname
+    -- reload syntax file after setting qf_toc variable
+    vim.bo.filetype = 'qf'
 end
 
 local function set_options()
     vim.bo.bufhidden = 'unload'
     vim.bo.buftype = 'nofile'
-    vim.bo.filetype = 'info'
     vim.bo.modifiable = false
     vim.bo.modified = false
     vim.bo.readonly = true
     vim.bo.swapfile = false
+    -- set as late as possible, so user can override default settings
+    vim.bo.filetype = 'info'
 end
 
 ---Open the reference under the cursor
@@ -266,7 +313,7 @@ function M.read(buf, ref)
     end
     local lines = split(text, '\n')
 
-    --- Extra line created by `vim.split` because `info` outputs `\n\n` at the end
+    -- Extra line created by `vim.split` because `info` outputs `\n\n` at the end
     if lines[#lines] == '' then
         lines[#lines] = nil
     end

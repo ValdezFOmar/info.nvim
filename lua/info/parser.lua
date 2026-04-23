@@ -459,10 +459,10 @@ end
 
 ---@param ref info.doc.Reference
 ---@return info.Manual.XRef
-local function format_ref(ref)
+local function map_ref(ref)
     return {
         range = ref.range,
-        label = ref.label.text,
+        label = ref.label,
         file = ref.target.file,
         node = ref.target.node,
         line = ref.target.line,
@@ -476,12 +476,18 @@ function M.as_buffer_data(doc)
     local next = doc.header.relations.next
     local prev = doc.header.relations.prev
     local up = doc.header.relations.up
+    local headings = vim.tbl_map(function(heading)
+        return heading.range
+    end, doc.headings)
+    table.insert(headings, doc.menu.header.range)
 
     return {
         file = doc.header.meta.file.target.text,
         node = doc.header.meta.node.target.text,
-        menu_entries = vim.tbl_map(format_ref, doc.menu.entries),
-        xreferences = vim.tbl_map(format_ref, doc.references),
+        headings = headings,
+        menu_entries = vim.tbl_map(map_ref, doc.menu.entries),
+        xreferences = vim.tbl_map(map_ref, doc.references),
+        footnotes = doc.footnotes,
         relations = {
             next = next and {
                 file = next.target.file,

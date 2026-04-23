@@ -71,10 +71,14 @@ error 'cannot require a meta file'
 ---@field line? integer 1-indexed
 ---@field range? info.TextRange `nil` if a shorthand reference was used
 
+---@class info.doc.Reference.Label
+---@field text string
+---@field range info.TextRange
+
 ---Cross-reference pointing to a manual's node.
 ---@class info.doc.Reference
 ---@field range info.TextRange
----@field label { range: info.TextRange, text: string }
+---@field label info.doc.Reference.Label
 ---@field target info.doc.Reference.Target
 
 ---@class info.doc.Menu
@@ -130,7 +134,7 @@ error 'cannot require a meta file'
 
 ---@class info.Manual.XRef
 ---@field range info.TextRange
----@field label string
+---@field label info.doc.Reference.Label
 ---@field file string
 ---@field node string
 ---@field line? integer 1-indexed
@@ -144,6 +148,8 @@ error 'cannot require a meta file'
 ---@class info.Manual
 ---@field file string
 ---@field node string
+---@field headings info.TextRange[]
 ---@field relations info.Manual.Relations
 ---@field xreferences info.Manual.XRef[]
 ---@field menu_entries info.Manual.XRef[]
+---@field footnotes? info.doc.Footnotes
