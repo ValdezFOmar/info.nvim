@@ -143,7 +143,8 @@ function M.decorate_buffer(bufnr, doc)
             api.nvim_buf_set_extmark(bufnr, ns, heading.range.end_row, 0, {
                 virt_text_pos = 'overlay',
                 virt_text_hide = true,
-                virt_text = { { heading.char:rep(80), group } }, -- Info pages are justified to 80 characters or less
+                -- Most info pages seem to be aligned to 72 characters
+                virt_text = { { heading.char:rep(72), group } },
             })
         end
     end

@@ -8,11 +8,20 @@ local group = api.nvim_create_augroup('info.nvim', {})
 
 api.nvim_create_user_command('Info', function(params)
     local info = require 'info.buf'
+    local mods = params.smods
+    local args = params.fargs
+
     local err ---@type string?
     if params.bang then
-        err = info.open_reference(params.smods)
+        err = info.open_cursor(mods)
+    elseif #args == 0 then
+        err = info.open({ file = 'dir', item = 'Top' }, mods)
+    elseif #args == 1 then
+        err = info.open({ item = args[1] }, mods)
+    elseif #args == 2 then
+        err = info.open({ file = args[1], item = args[2] }, mods)
     else
-        err = info.open(params.fargs, params.smods)
+        err = 'too many arguments (max: 2): ' .. vim.inspect(args)
     end
     if err then
         vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)

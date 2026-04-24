@@ -62,32 +62,28 @@ local manual_pattern = (function()
 
     ---@param key string
     ---@return vim.lpeg.Pattern
-    local function header_key(key)
+    local function headerkey(key)
         local text = (P(1) - S ',\n\t') ^ 1
         return START * Cgt('value', key * SP * Cpos(text)) * END * O(SP)
     end
 
     local COMMA = ',' * SP
-    local file_name = header_key 'File:'
-    local this_node = header_key 'Node:'
-    local next_node = header_key 'Next:'
-    local prev_node = header_key 'Prev:'
-    local up_node = header_key 'Up:'
     local header_desc = START * (1 - MSP) * (1 - P '\n') ^ 1 * END
-    local node_header = Cgt('file', file_name)
+    local node_header = Cgt('file', headerkey 'File:')
         * COMMA
-        * Cgt('node', this_node)
-        * O(COMMA * Cgt('next', next_node))
-        * O(COMMA * Cgt('prev', prev_node))
-        * O(COMMA * Cgt('up', up_node))
+        * Cgt('node', headerkey 'Node:')
+        * O(COMMA * Cgt('next', headerkey 'Next:'))
+        * O(COMMA * Cgt('prev', headerkey 'Prev:'))
+        * O(COMMA * Cgt('up', headerkey 'Up:'))
         * O(Cgt('desc', header_desc))
         * SWALLOW_LINE -- Extra text (see `info --file dir`)
 
     -- NOTE:
     -- The first character might be a colon (':') and should be considered part of the reference
     -- label (e.g. (bash)Builtin Index), so take the first non-space character unconditionally.
-    local reference_label = (1 - S ' \t\n') * (P(1) - ':') ^ 0
-    local reference_target = (P(1) - S '.,\t') ^ 1
+    -- Trimming is necessary for labels like `64-bit time symbol handling` in `(libc)Top`.
+    local reference_label = ((1 - S ' \t\n') * (P(1) - ':') ^ 0) / vim.trim
+    local reference_target = ((1 - S '.,\t') ^ 1) / vim.trim
     local reference = Cgt('label', Cpos(reference_label))
         * ':'
         * (':' + SP * Cgt('target', Cpos(reference_target)) * O(S '.,'))
@@ -337,19 +333,19 @@ end
 ---@param text string
 ---@return fun(): info.iter_lines.Line, info.iter_lines.Line
 local function iter_lines(text)
-    local line_ends = text:gmatch '()\n'
+    local line_ends = text:gmatch '()\n' ---@type fun(): integer
     local row = 0
     local line = {
         row = row,
         start = 0,
-        end_ = line_ends() --[[@as integer]],
+        end_ = line_ends(),
     }
 
     local yielded_extra_line = false
     return function()
         row = row + 1
         local start = line.end_
-        local end_ = line_ends() --[[@as integer]]
+        local end_ = line_ends()
         if not end_ then
             if not yielded_extra_line then
                 yielded_extra_line = true

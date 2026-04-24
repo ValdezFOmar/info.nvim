@@ -31,7 +31,7 @@ end
 ---@return string
 local function build_uri(manual, node, line)
     local encode = vim.uri_encode
-    if not node or node == manual then
+    if not node or vim.startswith(manual, node) then
         node = 'Top'
     end
     local params = line and '?line=' .. line or ''
@@ -49,7 +49,7 @@ end
 local function parse_ref(uri)
     local decode = vim.uri_decode
     local route, params = unpack(split(uri, '?'))
-    local line = tonumber(params and params:match 'line=(%d+)') --[[@as integer]]
+    local line = tonumber(params and params:match 'line=(%d+)') --[[@as integer?]]
     local manual, node = unpack(split(route, '/')) ---@type string, string?
     if manual == '' then
         return 'invalid info reference: info://' .. uri, manual, nil, nil
@@ -77,15 +77,13 @@ end
 ---@param node string?
 ---@return string? text
 local function get_file_text(file, node)
-    -- Sometimes `info` can't find a node using the `--node` flag,
-    -- but it can without it. Try different fallbacks until one succeeds,
-    -- or all fail.
+    -- Sometimes `info` can't find a node using the `--node` flag but it can without it.
     local commands ---@type string[][]
     if node then
         commands = {
             { 'info', '--output', '-', '--file', file, '--node', node },
-            { 'info', '--output', '-', '--file', file, node },
-            { 'info', '--output', '-', file, node },
+            { 'info', '--output', '-', '--file', file, '--', node },
+            { 'info', '--output', '-', '--', file, node },
         }
     else
         commands = { { 'info', '--ouput', '-', '--file', file } }
@@ -229,70 +227,74 @@ function M.toc()
     vim.bo.filetype = 'qf'
 end
 
-local function set_options()
-    vim.bo.bufhidden = 'unload'
-    vim.bo.buftype = 'nofile'
-    vim.bo.modifiable = false
-    vim.bo.modified = false
-    vim.bo.readonly = true
-    vim.bo.swapfile = false
-    -- set as late as possible, so user can override default settings
-    vim.bo.filetype = 'info'
-end
-
 ---Open the reference under the cursor
 ---@param mods table
 ---@nodiscard
 ---@return string? err
-function M.open_reference(mods)
+function M.open_cursor(mods)
     if vim.bo.filetype ~= 'info' then
-        return M.open({ vim.fn.expand '<cword>' }, mods)
+        return M.open({ item = vim.fn.expand '<cword>' }, mods)
     end
     local ref = get_reference()
     if not ref then
         return 'no reference under cursor'
     end
-    open_uri(build_uri(ref.file, ref.node, ref.line), mods)
+    return M.open({ file = ref.file, item = ref.node, line = ref.line }, mods)
 end
 
----@param args [string?, string?]
----@param mods table<string, any>
+---@class info.buf.open.Args
+---@field item string Node/Menu/Index item to search
+---@field file? string Manual file to search
+---@field line? integer 1-indexed
+
+---@param args info.buf.open.Args
+---@param mods table
 ---@nodiscard
 ---@return string? err
 function M.open(args, mods)
     vim.validate('args', args, 'table')
+    vim.validate('args.item', args.item, 'string')
+    vim.validate('args.file', args.file, 'string', true)
+    vim.validate('args.line', args.line, 'number', true)
     vim.validate('mods', mods, 'table')
 
-    local uri ---@type string?
-    if #args == 0 then
-        uri = build_uri 'dir'
-    elseif #args == 1 or #args == 2 then
-        local cmd ---@type string[]
-        if #args == 1 then
-            cmd = { 'info', '--all', '--where', args[1] }
-        else
-            cmd = { 'info', '--all', '--where', '--file', args[1], '--node', args[2] }
-        end
-        local res = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
-        if res.code ~= 0 then
-            return ('command error `%s`: %s'):format(vim.inspect(cmd), res.stderr or '')
-        end
-
-        local path = assert(split(res.stdout, '\n')[1])
-
-        if path == '' then
-            return ('no manual found for "%s"'):format(table.concat(args, ' '))
-        elseif path == '*manpages*' then
-            vim.cmd.Man { args[1], mods = mods }
-            return
-        end
-
-        local name = assert(vim.fs.basename(path):match '^([^.]+)') ---@type string
-        uri = build_uri(name, #args == 1 and args[1] or args[2])
+    local cmd ---@type string[]
+    if args.file then
+        -- NOTE:
+        -- `--all` is NOT used with `--file` since the paths are not printed in search order,
+        --  it also seems to ignore `args.item`.
+        --
+        -- These print different paths (expected):
+        -- info --where dir
+        -- info --where --file dir
+        --
+        -- These print the same paths in the same order (unexpected):
+        -- info --all --where dir
+        -- info --all --where --file dir
+        cmd = { 'info', '--where', '--file', args.file, '--', args.item }
     else
-        return 'too many arguments (max: 2): ' .. vim.inspect(args)
+        cmd = { 'info', '--all', '--where', '--', args.item }
     end
-    open_uri(uri, mods)
+    local proc = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
+    if proc.code ~= 0 then
+        return ('command error `%s`: %s'):format(vim.inspect(cmd), proc.stderr or '')
+    end
+
+    local path = assert(split(proc.stdout, '\n')[1])
+
+    if path == '*manpages*' then
+        vim.cmd.Man { args.file or args.item, mods = mods }
+        return
+    end
+    -- Info can report that a search item exists, yet it fails to provide the file contents,
+    -- so is necessary to check for file contents to determine if a given item exists for a manual.
+    if path == '' or (args.file and not get_file_text(args.file, args.item)) then
+        local ref = args.file and ('(%s)%s'):format(args.file, args.item) or args.item
+        return ('no manual entry for %q'):format(ref)
+    end
+
+    local name = assert(vim.fs.basename(path):match '^([^.]+)') ---@type string
+    open_uri(build_uri(name, args.item, args.line), mods)
 end
 
 ---@param buf integer
@@ -349,7 +351,14 @@ function M.read(buf, ref)
         require('info.hl').decorate_buffer(buf, document)
     end
 
-    set_options()
+    vim.bo[buf].bufhidden = 'unload'
+    vim.bo[buf].buftype = 'nofile'
+    vim.bo[buf].modifiable = false
+    vim.bo[buf].modified = false
+    vim.bo[buf].readonly = true
+    vim.bo[buf].swapfile = false
+    -- set as late as possible, so user can override default settings
+    vim.bo[buf].filetype = 'info'
 end
 
 return M
