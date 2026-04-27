@@ -81,6 +81,9 @@ end
 ---@param ref info.doc.Reference
 local function style_reference(bufnr, ref)
     hl_range(bufnr, groups.ReferenceLabel, ref.label.range)
+    if ref.label.bounded then
+        conceal_delimiters(bufnr, ref.label.range)
+    end
     if ref.target.range then
         hl_range(bufnr, groups.ReferenceTarget, ref.target.range)
     else

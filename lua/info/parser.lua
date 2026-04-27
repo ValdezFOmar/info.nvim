@@ -4,6 +4,9 @@ local lpeg = vim.lpeg
 local S = lpeg.S
 local P = lpeg.P
 local B = lpeg.B
+local R = lpeg.R
+local C = lpeg.C
+local Cc = lpeg.Cc
 local Cp = lpeg.Cp
 local Ct = lpeg.Ct
 local Cg = lpeg.Cg
@@ -28,10 +31,9 @@ local ElementType = {
 M.ElementType = ElementType
 
 ---@param pattern vim.lpeg.Pattern
----@param name string?
 ---@return vim.lpeg.Pattern
-local function Cpos(pattern, name)
-    return START * Cg(pattern, name or 'text') * END
+local function Cpos(pattern)
+    return START * Cg(pattern, 'text') * END
 end
 
 ---@param name string
@@ -51,7 +53,7 @@ end
 ---@param element info.Element
 ---@return vim.lpeg.Pattern
 local function Ctype(element)
-    return Cg(lpeg.Cc(element), 'type')
+    return Cg(Cc(element), 'type')
 end
 
 --- Info manual PEG parser
@@ -78,19 +80,29 @@ local manual_pattern = (function()
         * O(Cgt('desc', header_desc))
         * SWALLOW_LINE -- Extra text (see `info --file dir`)
 
-    -- NOTE:
+    -- Labels may be surrounded by ASCII char 127 (appears as '^?', see `:help digraph-table`).
+    -- See 'texi2any_internals' for an example.
+    local boundary = P '\127'
+    local bounded_label = (boundary * C((P(1) - boundary) ^ 1) / vim.trim * boundary)
+
     -- The first character might be a colon (':') and should be considered part of the reference
     -- label (e.g. (bash)Builtin Index), so take the first non-space character unconditionally.
     -- Trimming is necessary for labels like `64-bit time symbol handling` in `(libc)Top`.
-    local reference_label = ((1 - S ' \t\n') * (P(1) - ':') ^ 0) / vim.trim
-    local reference_target = ((1 - S '.,\t') ^ 1) / vim.trim
-    local reference = Cgt('label', Cpos(reference_label))
-        * ':'
-        * (':' + SP * Cgt('target', Cpos(reference_target)) * O(S '.,'))
+    --
+    -- A double colon ('::') may appear as a part of the label (e.g. `(source-highlight-lib)Concept Index`),
+    -- so a heuristic is needed to differentiate it from short-form reference.
+    local label = ((1 - S ' \t\n') * ((P '::' * #loc.alnum) + (P(1) - ':')) ^ 0) / vim.trim
+    local target = ((1 - S '.,\t') ^ 1) / vim.trim
+
+    local label_group = (
+        Cg(Cc(true), 'bounded') * Cpos(bounded_label) + Cg(Cc(false), 'bounded') * Cpos(label)
+    )
+    local reference = Cgt('label', label_group)
+        * (P '::' + (':' * SP * Cgt('target', Cpos(target)) * O(S '.,')))
 
     local menu_header = Ctype(ElementType.MenuHeader) * B '\n' * START * '* Menu:' * END * '\n'
 
-    local line_offset = P '(line' * SP * Cg(lpeg.R '09' ^ 1 / tonumber, 'line') * ')'
+    local line_offset = P '(line' * SP * Cg(R '09' ^ 1 / tonumber, 'line') * ')'
     local menu_entry = Ctype(ElementType.MenuEntry)
         * B '\n' -- menu entries only appear at the start of lines
         * START
@@ -108,31 +120,34 @@ local manual_pattern = (function()
         * reference
         * END
 
+    ---@param quote vim.lpeg.Pattern
+    ---@param start vim.lpeg.Pattern?
+    ---@return vim.lpeg.Pattern
+    local function sample_content(quote, start)
+        local nl = P '\n'
+        local char = P(1) - nl - quote
+        local char1 = start and start - nl - quote or char
+        -- NOTE: Limit the content to 2 lines at most since the parser can't
+        -- correctly calculate the range for a item that spans more than that.
+        return char1 * char ^ 0 * O(nl * char ^ 1)
+    end
+
     local single_quote_sample = Ctype(ElementType.InlineSample)
         * B(S ' \t\n/(') -- Prevent matching apostrophes
-        * Cg(lpeg.Cc "'", 'quote')
+        * Cg(Cc "'", 'quote')
         * START
-        * "'"
-        * (1 - S "' \t\n") -- More prevention towards false positives
-        * (1 - P "'") ^ 0
-        * "'"
+        * ((P "'" ^ 3) + (P "'" * sample_content(P "'", 1 - S ' \t\n') * "'"))
         * END
-
     local special_quote_sample = Ctype(ElementType.InlineSample)
-        * Cg(lpeg.Cc '‘', 'quote')
+        * Cg(Cc '‘', 'quote')
         * START
         * '‘'
-        * (1 - (P '‘' + '’')) ^ 1
+        * sample_content(P '‘' + '’')
         * '’'
         * END
-
     local inline_sample = special_quote_sample + single_quote_sample
-    local keycode = Ctype(ElementType.Keycode)
-        * START
-        * '<'
-        * (lpeg.R('az', 'AZ') + '-') ^ 1
-        * '>'
-        * END
+
+    local keycode = Ctype(ElementType.Keycode) * START * '<' * (R('az', 'AZ') + '-') ^ 1 * '>' * END
 
     local emphasis_boundary = loc.alnum + '_'
     local emphasis = Ctype(ElementType.Emphasis)
@@ -142,7 +157,7 @@ local manual_pattern = (function()
         * (1 - S '_\n') ^ 1
         * '_'
         * END
-        * -#emphasis_boundary
+        * -emphasis_boundary
 
     local strong_boundary = loc.alnum + '*'
     local strong = Ctype(ElementType.Strong)
@@ -152,7 +167,7 @@ local manual_pattern = (function()
         * (1 - S '*\n') ^ 1
         * '*'
         * END
-        * -#strong_boundary
+        * -strong_boundary
 
     local footnote_heading = Ctype(ElementType.FootNoteHeading)
         * B '\n   ' -- Footnotes headings seem to always appear at exactly 3 spaces from the start of the line
@@ -178,8 +193,8 @@ local manual_pattern = (function()
     ---@return vim.lpeg.Pattern
     local function heading(level, char)
         return Ctype(ElementType.Heading)
-            * Cg(lpeg.Cc(level), 'level')
-            * Cg(lpeg.Cc(char), 'char')
+            * Cg(Cc(level), 'level')
+            * Cg(Cc(char), 'char')
             * B '\n'
             * START
             * P(char) ^ 1
@@ -273,6 +288,7 @@ local function build_xref(ref, this_file, line, next_line)
         range = range_from_lines(ref, line, next_line),
         label = {
             text = label,
+            bounded = ref.label.bounded,
             range = range_from_lines(ref.label, line, next_line),
         },
         target = {

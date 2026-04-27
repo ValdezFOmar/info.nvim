@@ -14,6 +14,9 @@ error 'cannot require a meta file'
 ---@class info.parser.Element : info.parser.Position
 ---@field type info.Element
 
+---@class info.parser.Label : info.parser.TextPosition
+---@field bounded boolean
+
 ---@class info.parser.Sample : info.parser.Element
 ---@field quote string
 
@@ -22,7 +25,7 @@ error 'cannot require a meta file'
 ---@field level 1|2|3|4
 
 ---@class info.parser.Reference : info.parser.Element
----@field label info.parser.TextPosition
+---@field label info.parser.Label
 ---@field target? info.parser.TextPosition
 ---@field line? integer 1-indexed
 
@@ -74,6 +77,7 @@ error 'cannot require a meta file'
 ---@class info.doc.Reference.Label
 ---@field text string
 ---@field range info.TextRange
+---@field bounded boolean
 
 ---Cross-reference pointing to a manual's node.
 ---@class info.doc.Reference
