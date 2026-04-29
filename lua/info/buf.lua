@@ -41,6 +41,21 @@ local function build_uri(manual, node, line)
     return 'info://' .. encode(manual, 'rfc2396') .. '/' .. encode(node, 'rfc2396') .. params
 end
 
+---An Info buffer's name follows the following URI-like scheme:
+---
+---```
+---info://file/node?line=15
+---```
+---
+---Where:
+---
+---* `file`: file name
+---* `node` (optional): node name (default to `Top`)
+---* `line` (optional): 1-indexed line number to jump to. Is the only query
+---  parameter supported.
+---
+---The `file` and `node` parts are percent encoded to avoid conflicts with
+---reserved characters (e.g. `:Info groff I/O` opens `info://groff.info/I%2fO`)
 ---@param uri string
 ---@return string? error
 ---@return string manual
@@ -176,33 +191,33 @@ function M.toc()
     end
     for _, entry in ipairs(manual.menu_entries) do
         items[#items + 1] = {
+            bufnr = buf,
             text = entry.label.text,
             vcol = 0,
             -- Place cursor at the start of the label, skipping `* `.
             col = entry.label.range.start_col + 1,
             lnum = entry.label.range.start_row + 1,
-            filename = bufname,
         }
     end
     for _, xref in ipairs(manual.xreferences) do
         items[#items + 1] = {
+            bufnr = buf,
             text = xref.label.text,
             vcol = 0,
             -- Place cursor at the start of the label, skipping `*Note`.
             -- See 'Info sed Command-Line\ Options' for an example.
             col = xref.label.range.start_col + 1,
             lnum = xref.label.range.start_row + 1,
-            filename = bufname,
         }
     end
     if manual.footnotes then
         local range = manual.footnotes.heading.range
         items[#items + 1] = {
+            bufnr = buf,
             text = api.nvim_buf_get_lines(buf, range.start_row, range.end_row + 1, true)[1],
             vcol = 0,
             col = range.start_col + 1,
             lnum = range.start_row + 1,
-            filename = bufname,
         }
     end
 
@@ -247,6 +262,18 @@ end
 ---@field file? string Manual file to search
 ---@field line? integer 1-indexed
 
+-- NOTE:
+-- Looking up a manual by full name and with `--all` is noticeably slow (~1s).
+-- Is not as bad when using a prefix. Compare for `bas` instead of `bash`:
+--
+-- time info --all --where -- bas > /dev/null
+-- time info --all --where -- bash > /dev/null
+--
+-- But both cases are substantially better without `--all`:
+--
+-- time info --where -- bas > /dev/null
+-- time info --where -- bash > /dev/null
+
 ---@param args info.buf.open.Args
 ---@param mods table
 ---@nodiscard
@@ -276,8 +303,18 @@ function M.open(args, mods)
         cmd = { 'info', '--all', '--where', '--', args.item }
     end
     local proc = vim.system(cmd, { timeout = TIMEOUT, text = true }):wait()
-    if proc.code ~= 0 then
-        return ('command error `%s`: %s'):format(vim.inspect(cmd), proc.stderr or '')
+
+    -- FIX:
+    -- For some reason, `info` crashes when trying to open `info --file texi2any_internals {topic}`
+    -- Could try searching with `--node` (since that way `info` does not crash) and then fallback to the current approach.
+    -- This would be similar approach to `get_file_text()`
+    if proc.code ~= 0 or proc.signal == vim.uv.constants.SIGSEGV then
+        return ('command error %s (code %d, signal %d): %s'):format(
+            vim.inspect(cmd),
+            proc.code,
+            proc.signal,
+            proc.stderr
+        )
     end
 
     local path = assert(split(proc.stdout, '\n')[1])
@@ -311,7 +348,8 @@ function M.read(buf, ref)
 
     local text = get_file_text(file, node)
     if not text then
-        return 'no manual found for ' .. ref
+        local ref = node and ('(%s)%s'):format(file, node) or file
+        return ('no manual entry for %q'):format(ref)
     end
     local lines = split(text, '\n')
 

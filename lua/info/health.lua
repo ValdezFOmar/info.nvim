@@ -3,6 +3,13 @@ local M = {}
 function M.check()
     vim.health.start 'System'
 
+    if vim.fn.has 'nvim-0.12' == 0 then
+        vim.health.error(
+            'Incompatible neovim version: ' .. tostring(vim.version()),
+            'Upgrade to neovim 0.12'
+        )
+    end
+
     local info_path = vim.fn.exepath 'info'
     if info_path == '' then
         vim.health.error(

@@ -4,7 +4,7 @@ Read [`Info`][info] manuals inside Neovim.
 
 ## Dependencies
 
-- GNU [`info`][info-cli] command-line tool. Version 7.x is recommended.
+- GNU [`info`][info-cli] command-line tool (version >=7.0).
 
 ## Usage and Features
 
@@ -15,6 +15,7 @@ Use `:Info` to open an info manual:
 - `:Info`: opens the top level `dir` menu (like `$ info`)
 - `:Info topic`: open the menu entry in `dir` that matches `topic` (like `$ info topic`)
 - `:Info file node`: open the manual for `node` in the file `file` (like `$ info --file file --node node`)
+- `:Info!`: open the page for the reference/word under the cursor
 
 Examples:
 
@@ -23,36 +24,21 @@ Examples:
 :Info bash " Open '(bash)Top'
 :Info ls "Open '(coreutils)ls invocation'
 :Info gzip Adavanced\ Usage " Open '(gzip)Adavanced Usage', note that spaces need to be escaped
-:Info! " Open the page for the reference/word under the cursor
+:set keywordprg=:Info! " Open info manuals with `K`
 ```
 
 ### Default Keymaps
 
 - `q`: Close window
-- `K`: Open the page for the reference/word under the cursor
 - `gn`/`<Plug>(info-next-node)`: Go to page pointed by `Next`
 - `gp`/`<Plug>(info-prev-node)`: Go to page pointed by `Prev`
 - `gu`/`<Plug>(info-up-node)`: Go to page pointed by `Up`
+- `gO`/`<Plug>(info-toc)`: Show the table of contents
+
+Additionally, you can use `K` to open the Info manual for the reference
+under the cursor.
 
 All keymaps are local to Info buffers.
-
-### `info` URIs
-
-An Info buffer's name follows the following URI-like scheme:
-
-```
-info://file/node?line=15
-```
-
-Where:
-
-- `file`: file name
-- `node` (optional): node name (default to `Top`)
-- `line` (optional): 1-indexed line number to jump to. Is the only query
-  parameter supported.
-
-The `file` and `node` parts are percent encoded to avoid conflicts with
-reserved characters (e.g. `:Info groff I/O` opens `info://groff.info/I%2fO`)
 
 ### health
 
