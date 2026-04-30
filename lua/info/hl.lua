@@ -79,15 +79,28 @@ end
 ---Style common cross-reference elements (e.g. inline references and menu entries).
 ---@param bufnr integer
 ---@param ref info.doc.Reference
-local function style_reference(bufnr, ref)
+---@param is_menu_entry boolean
+local function style_reference(bufnr, ref, is_menu_entry)
     hl_range(bufnr, groups.ReferenceLabel, ref.label.range)
     if ref.label.bounded then
         conceal_delimiters(bufnr, ref.label.range)
     end
     if ref.target.range then
         hl_range(bufnr, groups.ReferenceTarget, ref.target.range)
+    elseif is_menu_entry then
+        -- Hiding `::` might misalign the descriptions after menu entries,
+        -- so conceal them using spaces.
+        local start_row = ref.range.end_row
+        local start_col = ref.label.range.end_col
+        for i = 0, 1 do
+            api.nvim_buf_set_extmark(bufnr, ns, start_row, start_col + i, {
+                end_row = start_row,
+                end_col = start_col + i + 1,
+                conceal = ' ',
+            })
+        end
     else
-        ---Conceal `::` for shorthand references.
+        -- Hide `::` for inline shorthand references.
         local start_row = ref.range.end_row
         local start_col = ref.label.range.end_col
         api.nvim_buf_set_extmark(bufnr, ns, start_row, start_col, {
@@ -162,7 +175,7 @@ function M.decorate_buffer(bufnr, doc)
             end_col = col + 1,
             hl_group = groups.ListMarker,
         })
-        style_reference(bufnr, entry)
+        style_reference(bufnr, entry, true)
     end
     for _, ref in ipairs(doc.references) do
         -- Conceal '*Note' annotations.
@@ -175,7 +188,7 @@ function M.decorate_buffer(bufnr, doc)
             end_col = ref.range.start_col + col_offset,
             conceal = '',
         })
-        style_reference(bufnr, ref)
+        style_reference(bufnr, ref, false)
     end
     if doc.footnotes then
         hl_range(bufnr, groups.Heading, doc.footnotes.heading.range)
