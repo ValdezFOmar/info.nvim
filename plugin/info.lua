@@ -26,7 +26,13 @@ api.nvim_create_user_command('Info', function(params)
     if err then
         vim.notify('info.nvim: ' .. err, vim.log.levels.ERROR)
     end
-end, { nargs = '*', bang = true })
+end, {
+    bang = true,
+    nargs = '*',
+    complete = function(...)
+        return require('info.complete').complete(...)
+    end,
+})
 
 api.nvim_create_autocmd('BufReadCmd', {
     group = group,
